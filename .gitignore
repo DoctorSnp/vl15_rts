@@ -1,0 +1,13 @@
+VL_15.cbproj
+VL_15.cbproj.local
+VL_15.pro.user
+VL_15.res
+VL_15.stat
+Win32/
+__astcache/
+__history/
+msvc_make.bat
+release32/
+src/__history/
+src/__original_ts.h
+
