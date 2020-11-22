@@ -2,14 +2,19 @@
 #include <windows.h>
 #include <math.h>
 #include <stdio.h>
-
+//#include <bitset>
 /*#define RTS_NODIRECTOBJLINKS*/
 #include "src/private_vl_15.h"
+#include "src/vl15_datatypes/cab/section1/elements.h"
 #include "../VL_15.h"
+
+#include "vl15_logic.h"
 
 
 #pragma hdrstop
 #pragma argsused
+
+VL15_logic VL15;
 
 wchar_t E_99[] = {L"E99"};
 wchar_t WIPE_LEFT[] ={L"wiperleft"};
@@ -53,7 +58,7 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->TrainPipeRate=0;
  eng->var[1]=0.0;
  eng->var[2]=0.0;
- eng->UR=0.0;
+ eng->UR=8.0;
  eng->var[4]=0.0;
  eng->var[5]=0.0;
  eng->var[6]=0.0;
@@ -74,7 +79,7 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->EPTvalue = 0.0;
  eng->Reverse =0;
 
- switch(State&0xFF){
+ /*switch(State&0xFF){
   case 1:
    eng->UR=5.5;
    eng->HandbrakePercent=0.0;
@@ -144,11 +149,14 @@ extern "C" bool Q_DECL_EXPORT Init
     cab->SetSwitch(116,0,true);
     cab->SetSwitch(117,0,true);
    };
-   cab->SetDisplayState(14,1);
+   cab->SetDisplayState(Snsr_Yakor,10);
+   cab->SetDisplayState(Snsr_TED_2,1);
   break;
  };
+*/
+ return VL15.init();
 
- return true;
+
 };
 
 
@@ -167,25 +175,50 @@ extern "C" void Q_DECL_EXPORT Run
  static int ReversePrev = 0;
  eng->MainResRate=0.0;
  eng->Panto =  SELF.Panto;
- Cabin *cab=loco->Cab();
+ Cabin *cab=loco->Cab();SwitchBV(loco, eng, 1 );
 
- if (eng->Reverse > 0)
+ cab->SetDisplayValue(Snsr_Yakor, 10.6);
+
+ eng->Reverse = cab->Switch(Arm_Reverse);
+ if (eng->Reverse >= 2)
  {
-   SELF.power = cab->Switch(4) * 10;
-   eng->Power= SELF.power;
-   eng->Force = SELF.power;
-   eng->BrakeForce = 0;
-   eng->BrakeForce = 0;
 
-  // if (ReversePrev != eng->Reverse)
+    eng->ThrottlePosition = cab->Switch(Arm_Zadatchik);
+    //eng->EngineCurrent = 200.0;
+
+
+   if (ReversePrev != eng->Reverse)
    {
-    wchar_t text[1024];
-    swprintf(text, L"Reverse: %d\n", eng->Reverse);
-    eng->ShowMessage(GMM_POST, text);
-   }
- //  ReversePrev =  eng->Reverse;
- }
 
+    loco->PostTriggerCab(Arm_Reverse );
+    wchar_t text[1024];
+    //swprintf(text, L"Reverse: %d\n", eng->Reverse);
+   // eng->ShowMessage(GMM_POST, text);
+
+    swprintf(text, L"Throttle: %u,  Flags: %lu  TC (254): %f  TC: %f  TM %f  NM %f  Voltage: %f\n",
+             eng->ThrottlePosition,
+             loco->LocoFlags,
+             loco->IndependentBrakePressure,
+             loco->BrakeCylinderPressure,
+             loco->TrainPipePressure,
+             loco->ChargingPipePressure,
+             loco->LineVoltage);
+
+    eng->ShowMessage(GMM_POST, text);
+
+    /*if ( CHECK_BIT(eng->EngineFlags, 2) )
+        swprintf(text, L"254 Released:\n");
+    else
+        swprintf(text, L"254 NOT Released:\n");
+    eng->ShowMessage(GMM_POST, text);*/
+
+
+    ReversePrev =  eng->Reverse;
+   }
+
+ }
+ //else
+ //    loco->PostTriggerCab(Arm_Reverse + 1); // сбрасываем звук
 }
 
 
@@ -227,6 +260,8 @@ extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco,const El
         unsigned int SwitchID,unsigned int SetState)
 {
  Cabin *cab=loco->Cab();
+
+ /*
  if(SwitchID==33 || SwitchID==38){
   if(!(loco->LocoFlags&1))
    return false;
@@ -275,7 +310,7 @@ extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco,const El
  }else if(SwitchID==119 || SwitchID==117 || SwitchID==116 || SwitchID==120){
   loco->PostTriggerCab(18);
  };
-
+*/
 
  return true;
 };
@@ -301,17 +336,17 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
 
 
  switch(SwitchID){
-  case 13:
-  case 14:
-  case 15:
-  if  (cab->Switch(13))
+  case Tumblers::Tbm_Panto:
+  case Tumblers::Tmb_Panto1_3:
+  case Tumblers::Tmb_Panto2_4:
+  if  (cab->Switch(Tumblers::Tbm_Panto))
   {
-      if  (cab->Switch(14))
+      if  (cab->Switch(Tumblers::Tmb_Panto1_3))
         SELF.Panto |= 1UL << 0;
       else
         SELF.Panto &=~(1UL << 0);
 
-      if  (cab->Switch(15))
+      if  (cab->Switch(Tumblers::Tmb_Panto2_4))
         SELF.Panto |= 1UL << 1;
       else
         SELF.Panto &=~(1UL << 1);
@@ -321,8 +356,34 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
   break;
  }
 
- if (cab->Switch(39) > 0)
-  loco->PostTriggerCab(8);
+ VL15.checkSwitch(loco, Buttons::Btn_Tifon);
+ VL15.checkSwitch(loco, Buttons::Btn_Svistok);
+ VL15.checkSwitch(loco, Arms::Arm_Reverse);
+
+ if (SwitchID == Keys::Key_EPK)
+    VL15.checkSwitch(loco, Keys::Key_EPK_ON);
+
+ if (SwitchID == Tumblers::Tmb_vozvrBV1 )
+ {
+     if (VL15.checkSwitch(loco, Tumblers::Tmb_BV1))
+     {
+        SwitchBV(loco, eng, 1 );
+        wchar_t text[1024];
+        swprintf(text, L"BV Enabled\n");
+        eng->ShowMessage(GMM_POST, text);
+     }
+ }
+
+ else if  (SwitchID == Tumblers::Tmb_BV1 )
+ {
+     if  (VL15.checkSwitch(loco,Tumblers::Tmb_BV1 ) < 1 )
+     {
+           SwitchBV(loco, eng, 0 );
+           wchar_t text[1024];
+           swprintf(text, L"BV Disabled\n");
+           eng->ShowMessage(GMM_POST, text);
+     }
+ }
 
 }
 

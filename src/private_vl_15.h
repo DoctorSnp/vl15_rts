@@ -24,6 +24,16 @@
 /*extern "C" void Q_DECL_EXPORT LostMaster
         (Locomotive *loco,const Locomotive *Prev,unsigned long State);*/
 
+
+#define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
+
+/**
+ * @brief m_checkSwitch Запускает озвучку или сбрасывает её в зависимости от положения элемента.
+ * @param loco Указатель на локомотив.
+ * @param switchElem ID элемента, который нужно проверить.
+ */
+void m_checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept;
+
 UINT IsLocoOn(const ElectricLocomotive *loco, ULONG Flags);
 void SwitchBV(const Locomotive *loco,ElectricEngine *eng,bool BVOn);
 void SwitchLights(const Locomotive *loco,Engine *eng,UINT State);

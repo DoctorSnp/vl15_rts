@@ -2,13 +2,24 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "src/vl15_datatypes/cab/section1/elements.h"
 #include "private_vl_15.h"
+
 
 extern "C" void Q_DECL_EXPORT LostMaster
         (Locomotive *loco,const Locomotive *Prev,unsigned long State);
 
 extern "C" void Switched(const ElectricLocomotive *loco,ElectricEngine *eng,
         unsigned int SwitchID,unsigned int PrevState);
+
+
+void m_checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept
+{
+    if (loco->Cab()->Switch(switchElem) > 0)
+     loco->PostTriggerCab(switchElem); // включаем звук
+    else
+     loco->PostTriggerCab(switchElem+1); // сбрасываем звук
+}
 
 UINT IsLocoOn(const ElectricLocomotive *loco, ULONG Flags)
 {
@@ -29,7 +40,7 @@ void SwitchBV(const Locomotive *loco,ElectricEngine *eng,bool BVOn)
 {
  if((eng->MainSwitch!=0)!=BVOn){
   eng->MainSwitch=BVOn?1:0;
-  loco->PostTriggerBoth(103);
+  loco->PostTriggerBoth(Tmb_BV1);
  };
 };
 
