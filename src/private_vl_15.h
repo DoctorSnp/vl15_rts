@@ -32,6 +32,8 @@
  * @param loco Указатель на локомотив.
  * @param switchElem ID элемента, который нужно проверить.
  */
+
+#if 0
 void m_checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept;
 
 UINT IsLocoOn(const ElectricLocomotive *loco, ULONG Flags);
@@ -44,4 +46,5 @@ UINT ApproachRed(Engine *eng,float SigDist,float Vel);
 bool SwitchPosition(ElectricEngine *eng,bool Fast,bool NoS,UINT SetPos,float Current);
 void WriteThrottlePosition(wchar_t *buf,Engine *eng);
 
+#endif
 #endif // PRIVATE_VL_15_H

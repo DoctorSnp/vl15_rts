@@ -19,16 +19,15 @@ int VL15_logic::checkSwitch(const ElectricLocomotive *loco, unsigned short switc
 
 unsigned short VL15_logic::m_checkSwitch(const ElectricLocomotive *loco, unsigned short switchElem) noexcept
 {
-    unsigned short newState = 0;
+
     if (loco->Cab()->Switch(switchElem) > 0)
     {
      loco->PostTriggerCab(switchElem); // включаем звук
-     newState = 1;
     }
     else
      loco->PostTriggerCab(switchElem+1); // сбрасываем звук
 
-    return newState;
+    return loco->Cab()->Switch(switchElem);
 }
 
 

@@ -16,6 +16,7 @@ CONFIG += c++11
 SOURCES += \
     src/private_vl_15.cpp \
     src/ts.cpp \
+    src/utils/utils.cpp \
     src/vl15_logic.cpp \
     src/vl_15.cpp
 
@@ -24,6 +25,7 @@ HEADERS += \
     VL_15.h \
     src/private_vl_15.h \
     src/ts.h \
+    src/utils/utils.h \
     src/vl15_datatypes/cab/section1/elements.h \
     src/vl15_logic.h
 

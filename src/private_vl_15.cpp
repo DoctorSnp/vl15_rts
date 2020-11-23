@@ -5,6 +5,7 @@
 #include "src/vl15_datatypes/cab/section1/elements.h"
 #include "private_vl_15.h"
 
+#if 0
 
 extern "C" void Q_DECL_EXPORT LostMaster
         (Locomotive *loco,const Locomotive *Prev,unsigned long State);
@@ -438,3 +439,5 @@ void WriteThrottlePosition(wchar_t *buf,Engine *eng)
   };
  };
 };
+
+#endif
