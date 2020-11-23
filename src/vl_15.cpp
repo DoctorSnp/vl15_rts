@@ -1,5 +1,4 @@
-﻿
-#include <windows.h>
+﻿#include <windows.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -10,7 +9,6 @@
 #include "src/private_vl_15.h"
 #include "src/vl15_datatypes/cab/section1/elements.h"
 #include "../VL_15.h"
-
 #include "vl15_logic.h"
 
 
@@ -24,11 +22,18 @@ VL15_logic VL15;
 wchar_t E_99[] = {L"E99"};
 wchar_t WIPE_LEFT[] ={L"wiperleft"};
 wchar_t WIPE_RIGHT[] ={L"wiperright"};
+
+
+
 static struct
 {
  int Panto;
  float power;
- int dest; //1 , -1
+ int dest; //1 ,0,  -1
+ Pneumo pneumo;
+ float Velocity;
+ bool SL2M_Ticked;
+ int BVOn;
 }SELF;
 
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
@@ -49,9 +54,6 @@ extern "C" bool Q_DECL_EXPORT Init
  (ElectricEngine *eng,ElectricLocomotive *loco,unsigned long State,
         float time,float AirTemperature)
 {
- //UINT *Flags=(UINT *)&eng->var[0];
- //UINT *AsyncFlags=(UINT *)&eng->var[4];
- //Cabin *cab=loco->Cab();
  loco->HandbrakeValue=0.0;
  eng->HandbrakePercent=0.0;
  eng->DynamicBrakePercent=0;
@@ -79,8 +81,8 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->var[16]=0.0;
  eng->var[17]=0.0;
  eng->AuxilaryRate=0.0;
- //loco->MainResPressure=5.2;
-
+ SELF.SL2M_Ticked = false;
+ SELF.BVOn = 0;
  eng->EPTvalue = 0.0;
  eng->Reverse =0;
 
@@ -93,17 +95,13 @@ extern "C" bool Q_DECL_EXPORT Init
    loco->AuxiliaryPressure=0.0;
    loco->BrakeCylinderPressure=0.0;
    loco->MainResPressure=0.0;
-  // eng->Panto=3;
-  // eng->MainSwitch=1;
    eng->IndependentBrakeValue=0.0;
-   //*AsyncFlags|=588;
 
   break;
  };
 
  SELF.dest = -1;
  return VL15.init();
-
 };
 
 
@@ -111,110 +109,135 @@ extern "C" void Q_DECL_EXPORT Run
  (ElectricEngine *eng,const ElectricLocomotive *loco,unsigned long State,
         float time,float AirTemperature)
 {
- eng->MainResRate=0.0;
- eng->Panto =  SELF.Panto;
- Cabin *cab=loco->Cab();
- //SwitchBV(loco, eng, 1 );
+    eng->MainResRate=0.0;
+    eng->Panto =  SELF.Panto;
+    Cabin *cab=loco->Cab();
 
- //cab->SetDisplayValue(Snsr_Yakor, 10.6);
- static unsigned int ThrottlePosition = 1;
-static int Reverse = 1;
+    static unsigned int ThrottlePosition = 1;
+    static int Reverse = 1;
 
- eng->Reverse = cab->Switch(Arm_Reverse);
+    eng->Reverse = cab->Switch(Arm_Reverse);
 
- if (eng->Reverse >= 1)
- {
-   float Velocity = loco->Velocity;
+    float Velocity = fabs(loco->Velocity);
 
-   float SetForce = 0.0;
-   eng->ThrottlePosition = cab->Switch(Arm_Zadatchik);
-   float LineVoltage =  loco->LineVoltage;
-   if (ThrottlePosition < 1)
-    ThrottlePosition = 1;
-   if(Velocity<=3.01)
-       SetForce= 400000.0 * (ThrottlePosition-1);
-   else
-   {
-       SetForce = (340000.0* ThrottlePosition-1);
-       /*SetForce = (340000.0*eng->ThrottlePosition)/
+    eng->ThrottlePosition = cab->Switch(Arm_Zadatchik);
+    float LineVoltage =  loco->LineVoltage;
+    if (ThrottlePosition < 1)
+        ThrottlePosition = 1;
+
+    float SetForce = 0.0;
+    if(Velocity<=3.01)
+        SetForce= 400000.0 * (ThrottlePosition-1);
+    else
+    {
+        SetForce = (340000.0* ThrottlePosition-1);
+        /*SetForce = (340000.0*eng->ThrottlePosition)/
                    (Velocity*Velocity*std::pow(0.978,eng->ThrottlePosition)) +
                    shunt*468750.0/Velocity;*/
-   }
+    }
+
+    SetForce*= eng->Reverse*(LineVoltage/2000.0);
+    eng->Force=eng->var[12];
+    if(eng->Force<SetForce)
+    {
+        eng->Force+=(10000.0+(SetForce-eng->Force)*0.6)*time;
+        if(eng->Force>SetForce)
+            eng->Force=SetForce;
+    }else if(eng->Force>SetForce)
+    {
+        //eng->Force-=3000.0*time;
+        if(eng->Force<SetForce)
+            eng->Force=SetForce;
+    }
+    eng->Force *= SELF.dest ;//* SELF.BVOn;
+
+    Printer_print(eng, GMM_POST, L"Force: %f\n", SetForce);
 
 
-   if (ThrottlePosition != eng->ThrottlePosition )
-   {
-       ThrottlePosition = eng->ThrottlePosition;
-       wchar_t text[1024]; \
-       swprintf(text, L"Force %f Throttle: %d Reverse: %d\n", SetForce, ThrottlePosition,  eng->Reverse);
-       eng->ShowMessage(GMM_POST, text);
+    eng->IndependentBrakeValue= ( SELF.pneumo.Arm_254 - 1) * 1.0;
 
-       // от 1 до 6
-       if (eng->Reverse > 2)
-           SELF.dest = -1;
-       else if (eng->Reverse < 2 )
-           SELF.dest = 1;
-       else
-           SELF.dest = 0;
-   }
+    if (ThrottlePosition != eng->ThrottlePosition )
+    {
+        ThrottlePosition = eng->ThrottlePosition;
+        // от 1 до 6
+        if (eng->Reverse > 2)
+            SELF.dest = -1;
+        else if (eng->Reverse < 2 )
+            SELF.dest = 1;
+        else
+            SELF.dest = 0;
+    }
 
-   if (Reverse != eng->Reverse)
-   {
-       Reverse = eng->Reverse;
-   }
+    if (Reverse != eng->Reverse)
+    {
+        Reverse = eng->Reverse;
+    }
 
-   SetForce*= eng->Reverse*(LineVoltage/2000.0);
-   eng->Force=eng->var[12];
-   if(eng->Force<SetForce)
-   {
-       eng->Force+=(10000.0+(SetForce-eng->Force)*0.6)*time;
-       if(eng->Force>SetForce)
-           eng->Force=SetForce;
-   }else if(eng->Force>SetForce)
-   {
-       //eng->Force-=3000.0*time;
-       if(eng->Force<SetForce)
-           eng->Force=SetForce;
-   }
-   eng->Force *= SELF.dest;
-   return; // с этим ретурном работат
-   eng->Power=ThrottlePosition*28.8*(LineVoltage/26000.0)*fabs(eng->Force/TR_CURRENT_C)*4.0;
-
-        if(loco->NumEngines){
-         eng->EngineForce[0]= (eng->Force/4.0);// * SELF.dest;
-         eng->EngineVoltage[0]=ThrottlePosition*26.5*(LineVoltage/000.0);
-         eng->EngineCurrent[0]=fabs(eng->Force/TR_CURRENT_C);
-         if(eng->EngineCurrent[0])
-          eng->EngineCurrent[0]+=50.0;
-         if(eng->cab->Switches[1].State>3)
-          eng->EngineCurrent[0]*=1.0+(eng->cab->Switches[1].State-3)*0.05;
-         //if(eng->Wheelslip)
-          //eng->EngineCurrent[0]*=1.01+float(GetTickCount()%10)/200.0;
-         if(eng->EngineCurrent[0]>1400.0||loco->BrakeCylinderPressure>3.0){
-          //SwitchBV(loco,eng,0);
-         // *Flags|=4;
-          eng->Force=0;
-          eng->Power=0;
-          eng->EngineForce[0]=0;
-          eng->EngineVoltage[0]=0;
-          eng->EngineCurrent[0]=0;
-         // if(BackSec)
-         //  SwitchGV(BackSec,BackSec->loco,0);
-         };
+    if (Velocity >= 5.0)
+    {
+        if (SELF.SL2M_Ticked == false )
+        {
+            loco->PostTriggerCab(Equipment::SL_2M);
+            SELF.SL2M_Ticked = true;
         }
-        eng->EngineForce[0] *= SELF.dest;
+    }
+    else
+    {
+        if (SELF.SL2M_Ticked == true )
+        {
+            loco->PostTriggerCab(Equipment::SL_2M + 1);
+            SELF.SL2M_Ticked = false;
+        }
+    }
 
-        eng->EngineForce[1]=eng->EngineForce[0];
-        eng->EngineCurrent[1]=eng->EngineCurrent[0];
-        eng->EngineVoltage[1]=eng->EngineVoltage[0];
-        eng->EngineForce[2]=eng->EngineForce[0];
-        eng->EngineCurrent[2]=eng->EngineCurrent[0];
-        eng->EngineVoltage[2]=eng->EngineVoltage[0];
-        eng->EngineForce[3]=eng->EngineForce[0];
-        eng->EngineCurrent[3]=eng->EngineCurrent[0];
-        eng->EngineVoltage[3]=eng->EngineVoltage[0];
+    if (( SELF.Velocity == 0.0) && (Velocity > 0.0))
+    {
+        if (loco->Velocity > 0.0 )
+            loco->PostTriggerCab(SAUT::Start_Drive);
+        else if (loco->Velocity  < 0.0 )
+            loco->PostTriggerCab(SAUT::Drive_Backward);
+    }
+    SELF.Velocity = Velocity;
 
- }
+    return; // с этим ретурном работат
+
+
+
+    eng->Power=ThrottlePosition*28.8*(LineVoltage/26000.0)*fabs(eng->Force/TR_CURRENT_C)*4.0;
+
+    if(loco->NumEngines){
+        eng->EngineForce[0]= (eng->Force/4.0);// * SELF.dest;
+        eng->EngineVoltage[0]=ThrottlePosition*26.5*(LineVoltage/000.0);
+        eng->EngineCurrent[0]=fabs(eng->Force/TR_CURRENT_C);
+        if(eng->EngineCurrent[0])
+            eng->EngineCurrent[0]+=50.0;
+        if(eng->cab->Switches[1].State>3)
+            eng->EngineCurrent[0]*=1.0+(eng->cab->Switches[1].State-3)*0.05;
+        //if(eng->Wheelslip)
+        //eng->EngineCurrent[0]*=1.01+float(GetTickCount()%10)/200.0;
+        if(eng->EngineCurrent[0]>1400.0||loco->BrakeCylinderPressure>3.0){
+            //SwitchBV(loco,eng,0);
+            // *Flags|=4;
+            eng->Force=0;
+            eng->Power=0;
+            eng->EngineForce[0]=0;
+            eng->EngineVoltage[0]=0;
+            eng->EngineCurrent[0]=0;
+            // if(BackSec)
+            //  SwitchGV(BackSec,BackSec->loco,0);
+        };
+    }
+    eng->EngineForce[0] *= SELF.dest;
+
+    eng->EngineForce[1]=eng->EngineForce[0];
+    eng->EngineCurrent[1]=eng->EngineCurrent[0];
+    eng->EngineVoltage[1]=eng->EngineVoltage[0];
+    eng->EngineForce[2]=eng->EngineForce[0];
+    eng->EngineCurrent[2]=eng->EngineCurrent[0];
+    eng->EngineVoltage[2]=eng->EngineVoltage[0];
+    eng->EngineForce[3]=eng->EngineForce[0];
+    eng->EngineCurrent[3]=eng->EngineCurrent[0];
+    eng->EngineVoltage[3]=eng->EngineVoltage[0];
 
 }
 
@@ -349,38 +372,41 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
      else
          SELF.Panto = 0x0;
      break;
-  //case Arms::Arm_Reverse:
-    //eng->Reverse = cab->Switch(Arms::Arm_Reverse);
-  //break;
  default:
      break;
  }
 
  VL15.checkSwitch(loco, Buttons::Btn_Tifon);
  VL15.checkSwitch(loco, Buttons::Btn_Svistok);
- //VL15.checkSwitch(loco, Arms::Arm_Reverse);
+ SELF.pneumo.Arm_254 = 6 - VL15.checkSwitch(loco, Arms::Arm_254);
 
-// if (SwitchID == Keys::Key_EPK)
-//    VL15.checkSwitch(loco, Keys::Key_EPK_ON);
+ if (SwitchID == Keys::Key_EPK)
+ {
+     if ( loco->Cab()->Switch(Keys::Key_EPK) )
+     {
+         VL15.checkSwitch(loco, Keys::Key_EPK_ON);
+         loco->PostTriggerCab(SAUT::WHITE);
+     }
+     else
+         VL15.checkSwitch(loco, Keys::Key_EPK_OFF);
+ }
+
 
  if (SwitchID == Tumblers::Tmb_vozvrBV1 )
  {
-     if (VL15.checkSwitch(loco, Tumblers::Tmb_BV1))
+
+     if (loco->Cab()->Switch(Tmb_vozvrBV1) > 0)
      {
-        //SwitchBV(loco, eng, 1 );
-        //wchar_t text[1024];
-        //swprintf(text, L"BV Enabled\n");
-        //eng->ShowMessage(GMM_POST, text);
+      loco->PostTriggerCab(Tumblers::Tmb_BV1); // включаем звук
+      SELF.BVOn = 1;
      }
+
  }
  else if  (SwitchID == Tumblers::Tmb_BV1 )
  {
      if  (VL15.checkSwitch(loco,Tumblers::Tmb_BV1 ) < 1 )
      {
-           //SwitchBV(loco, eng, 0 );
-          // wchar_t text[1024];
-          // swprintf(text, L"BV Disabled\n");
-          // eng->ShowMessage(GMM_POST, text);
+         SELF.BVOn = 0;
      }
  }
 

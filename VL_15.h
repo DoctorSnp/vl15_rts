@@ -2,6 +2,11 @@
 #include <tchar.h>
 #endif
 
+
+#ifndef MAIN_VL15_H
+#define MAIN_VL15_H
+
+
 #include "src/private_vl_15.h"
 #include "src/ts.h"
 
@@ -24,6 +29,15 @@
 #define BRAKE_FORCE_SHIFT 10000.0
 #define CURRENT_SHUNT_Q 1.2
 
+typedef struct st_Pneumo
+{
+  int Arm_254;
+  int Arm_394;
+  int Blok_367;
+
+}Pneumo;
 
 extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEngine *eng,
         unsigned int SwitchID,unsigned int PrevState);
+
+#endif

@@ -8,7 +8,7 @@
 #include "src/ts.h"
 #include "utils.h"
 
-#if 0
+
 void  Printer_print( ElectricEngine *eng, int dbgLevel, const wchar_t *format, ...) noexcept
 {
     va_list args;
@@ -19,4 +19,4 @@ void  Printer_print( ElectricEngine *eng, int dbgLevel, const wchar_t *format, .
 
     eng->ShowMessage(dbgLevel, text);
 }
-#endif
+

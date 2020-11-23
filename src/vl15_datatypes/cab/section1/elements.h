@@ -18,21 +18,42 @@ typedef enum en_Tumblers
 
 typedef enum en_Buttons
 {
+    Btn_Svistok = 37,
     Btn_Tifon = 39,
-    Btn_Svistok = 10,
-
 }Buttons;
+
+
+typedef enum en_Equipment
+{
+  SL_2M = 300,
+}Equipment;
+
+typedef enum en_Saut
+{
+    Start_Drive = 204,
+    STATION = 202,
+    Drive_Backward = 203,
+    GREEN = 206,
+    YELLOW = 207,
+    KG = 208,
+    RED = 209,
+    WHITE = 210
+}
+SAUT;
 
 typedef enum en_Arms
 {
+  Arm_394 = 0,
+  Arm_254 = 1,
   Arm_Reverse = 2,
   Arm_Zadatchik = 4,
 }Arms;
 
 typedef enum en_Keys
 {
-    Key_EPK = 56,
-    Key_EPK_ON = 106
+    Key_EPK = 8,
+    Key_EPK_ON = 106,
+    Key_EPK_OFF = 107
 }Keys;
 
 
