@@ -146,8 +146,16 @@ static int Reverse = 1;
    {
        ThrottlePosition = eng->ThrottlePosition;
        wchar_t text[1024]; \
-       swprintf(text, L"Force %f\n Throttle: %d", SetForce, ThrottlePosition);
+       swprintf(text, L"Force %f Throttle: %d Reverse: %d\n", SetForce, ThrottlePosition,  eng->Reverse);
        eng->ShowMessage(GMM_POST, text);
+
+       // от 1 до 6
+       if (eng->Reverse > 2)
+           SELF.dest = -1;
+       else if (eng->Reverse < 2 )
+           SELF.dest = 1;
+       else
+           SELF.dest = 0;
    }
 
    if (Reverse != eng->Reverse)
@@ -168,10 +176,9 @@ static int Reverse = 1;
        if(eng->Force<SetForce)
            eng->Force=SetForce;
    }
-
-   return;
+   eng->Force *= SELF.dest;
+   return; // с этим ретурном работат
    eng->Power=ThrottlePosition*28.8*(LineVoltage/26000.0)*fabs(eng->Force/TR_CURRENT_C)*4.0;
-
 
         if(loco->NumEngines){
          eng->EngineForce[0]= (eng->Force/4.0);// * SELF.dest;
