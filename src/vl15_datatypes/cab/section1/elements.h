@@ -1,15 +1,34 @@
 #ifndef ELEMENTS_H
 #define ELEMENTS_H
 
+
+typedef enum sounds
+{
+    Default_Tumbler = 24,
+    Kran_254 = 51,
+    Kran_394 = 52,
+    BV = 17,
+    EPK_INIT = 106,
+    TP_UP = 13,
+    TP_DOWN = 14,
+    MK = 101,
+    MV_low = 108,
+    Revers = 2,
+    PesokButton = 4,
+    FinalStop = 54,
+}SoundsID;
+
 typedef enum en_Tumblers
 {
-    Tbm_Panto = 13,
+    Tmb_Panto = 13,
     Tmb_Panto1_3 = 14,
     Tmb_Panto2_4 = 15,
     Tmb_vozvrBV1 = 16,
     Tmb_BV1 = 17,
     Tmb_BV2_on = 12,
     Tmb_BV2_off = 11,
+    Tmb_MK_ = 9,
+    Tmb_MV_low = 10,
     Tmb_Searchlight_Bright = 18,
     Tmb_Searchlight_Dimly = 19,
 
@@ -20,6 +39,7 @@ typedef enum en_Buttons
 {
     Btn_Svistok = 37,
     Btn_Tifon = 39,
+    Btn_Pesok = 29,
 }Buttons;
 
 
@@ -52,8 +72,6 @@ typedef enum en_Arms
 typedef enum en_Keys
 {
     Key_EPK = 8,
-    Key_EPK_ON = 106,
-    Key_EPK_OFF = 107
 }Keys;
 
 

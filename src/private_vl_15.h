@@ -23,28 +23,15 @@
 
 /*extern "C" void Q_DECL_EXPORT LostMaster
         (Locomotive *loco,const Locomotive *Prev,unsigned long State);*/
-
+/**
+ * @brief _checkSwitchWithSound Возвращает состояние элемента и проигрывает его звук
+ * @param loco
+ * @param switchElem
+ * @param soundId
+ * @return
+ */
+int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchElem, int soundId, int singleSound);
 
 #define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
 
-/**
- * @brief m_checkSwitch Запускает озвучку или сбрасывает её в зависимости от положения элемента.
- * @param loco Указатель на локомотив.
- * @param switchElem ID элемента, который нужно проверить.
- */
-
-#if 0
-void m_checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept;
-
-UINT IsLocoOn(const ElectricLocomotive *loco, ULONG Flags);
-void SwitchBV(const Locomotive *loco,ElectricEngine *eng,bool BVOn);
-void SwitchLights(const Locomotive *loco,Engine *eng,UINT State);
-void AsyncSwitch(const ElectricLocomotive *loco,UINT UnitID,UINT Command,bool On);
-bool ThreeSectionOK(const ElectricLocomotive *loco,ElectricEngine *eng);
-bool ThreeSectionOK(const ElectricLocomotive *loco,ElectricEngine *eng);
-UINT ApproachRed(Engine *eng,float SigDist,float Vel);
-bool SwitchPosition(ElectricEngine *eng,bool Fast,bool NoS,UINT SetPos,float Current);
-void WriteThrottlePosition(wchar_t *buf,Engine *eng);
-
 #endif
-#endif // PRIVATE_VL_15_H

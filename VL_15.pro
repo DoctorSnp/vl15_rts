@@ -17,8 +17,8 @@ SOURCES += \
     src/private_vl_15.cpp \
     src/ts.cpp \
     src/utils/utils.cpp \
-    src/vl15_logic.cpp \
-    src/vl_15.cpp
+    src/vl15.cpp \
+    src/vl_15_main.cpp
 
 HEADERS += \
     src/VL15_global.h \
@@ -27,7 +27,7 @@ HEADERS += \
     src/ts.h \
     src/utils/utils.h \
     src/vl15_datatypes/cab/section1/elements.h \
-    src/vl15_logic.h
+    src/vl15.h
 
 
 

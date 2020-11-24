@@ -1,4 +1,4 @@
-#ifndef VL15_LOGIC_H
+﻿#ifndef VL15_LOGIC_H
 #define VL15_LOGIC_H
 
 #include "src/private_vl_15.h"
@@ -20,7 +20,7 @@ public:
      * @param switchElem
      * @param singleSound
      */
-    int checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept;
+    //int checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept;
 
 private:
     unsigned short m_checkSwitch(const ElectricLocomotive* loco, unsigned short switchElem) noexcept;

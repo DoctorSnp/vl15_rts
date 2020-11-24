@@ -11,7 +11,7 @@
 #include "src/vl15_datatypes/cab/section1/elements.h"
 #include "../VL_15.h"
 
-#include "vl15_logic.h"
+#include "vl15.h"
 
 
 #pragma hdrstop
@@ -19,24 +19,35 @@
 
 #define TR_CURRENT_C 272.0
 
-VL15_logic VL15;
 
 wchar_t E_99[] = {L"E99"};
 wchar_t WIPE_LEFT[] ={L"wiperleft"};
 wchar_t WIPE_RIGHT[] ={L"wiperright"};
 
-
-
-static struct
+/**
+  * Структура с собственными параметрами для работы между функциями библиотеки.
+  **/
+static struct st_Self
 {
- int Panto;
- float power;
- int dest; //1 ,0,  -1
- Pneumo pneumo;
- float Velocity;
- bool SL2M_Ticked;
- int BV_STATE;
+  int dest; // 1 ,0,  -1
+  st_Tumblers tumblers;
+  Electric elecrto;
+  Pneumo pneumo;
+  float Velocity;
+  bool SL2M_Ticked;
+  int BV_STATE;
+  int EPK;
+  int MK;
+  int MV_low;
+  int isFinalStop = 0;
 }SELF;
+
+static void _initSelf(struct st_Self *selfStr)
+{
+    memset(selfStr, 0, sizeof (struct st_Self));
+    selfStr->SL2M_Ticked = false;
+}
+
 
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
@@ -60,7 +71,7 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->HandbrakePercent=0.0;
  eng->DynamicBrakePercent=0;
  eng->Sanding=0;
- eng->BrakeSystemsEngaged=0; //1
+ eng->BrakeSystemsEngaged=0;
  eng->BrakeForce=0.0;
  eng->var[0]=0;
  eng->ChargingRate=0;
@@ -83,8 +94,8 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->var[16]=0.0;
  eng->var[17]=0.0;
  eng->AuxilaryRate=0.0;
- SELF.SL2M_Ticked = false;
- SELF.BV_STATE = 0;
+
+
  eng->EPTvalue = 0.0;
  eng->Reverse =0;
 
@@ -101,8 +112,9 @@ extern "C" bool Q_DECL_EXPORT Init
   break;
  };
 
+ _initSelf(&SELF);
  SELF.dest = -1;
- return VL15.init();
+ return true;
 
 };
 
@@ -112,7 +124,7 @@ extern "C" void Q_DECL_EXPORT Run
         float time,float AirTemperature)
 {
  eng->MainResRate=0.0;
- eng->Panto =  SELF.Panto;
+ eng->Panto = SELF.elecrto.Panto;
  Cabin *cab=loco->Cab();
  static unsigned int ThrottlePosition = 1;
 static int Reverse = 1;
@@ -169,6 +181,11 @@ static int Reverse = 1;
            eng->Force=SetForce;
    }
    eng->Force *= float(SELF.dest) * float(SELF.BV_STATE);
+
+   if (SELF.pneumo.Arm_254 < 1)
+       SELF.pneumo.Arm_254 = 1;
+
+   SELF.pneumo.Arm_254 = 6 - _checkSwitchWithSound(loco, Arms::Arm_254, -1, 1);
    eng->IndependentBrakeValue= ( SELF.pneumo.Arm_254 - 1) * 1.0;
 
    if (Velocity >= 5.0)
@@ -195,7 +212,28 @@ static int Reverse = 1;
        else
             loco->PostTriggerCab(SAUT::Drive_Backward);
    }
+
+   if (SELF.Velocity >  Velocity  ) // типа, быстро так тормозим
+   {
+       if ((SELF.Velocity < 3.0) && (SELF.isFinalStop == 0) )
+       {
+           SELF.isFinalStop = 1;
+           //Printer_print(eng, GMM_POST, L"STarting finalstop!!!\n");
+           loco->PostTriggerCab(SoundsID::FinalStop );
+       }
+   }
+
    SELF.Velocity = Velocity;
+
+   if (SELF.Velocity == 0.0)
+   {
+       if (SELF.isFinalStop )
+       {
+           SELF.isFinalStop = 0;
+           //Printer_print(eng, GMM_POST, L"STOP finalstop\n");
+           loco->PostTriggerCab(SoundsID::FinalStop + 1);
+       }
+   }
 
    return; // с этим ретурном работат
    eng->Power=ThrottlePosition*28.8*(LineVoltage/26000.0)*fabs(eng->Force/TR_CURRENT_C)*4.0;
@@ -345,63 +383,131 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
         unsigned int SwitchID,unsigned int PrevState)
 {
 
- Cabin *cab=loco->Cab();
+    Cabin *cab=loco->Cab();
 
+    switch(SwitchID)
+    {
+    case Tumblers::Tmb_Panto:
+        SELF.tumblers.panto = _checkSwitchWithSound(loco, Tumblers::Tmb_Panto, SoundsID::Default_Tumbler, 1);
+        if (SELF.tumblers.panto == 0)
+        {
+            int isSound =0;
+            if  (SELF.tumblers.panto1_3 == 1)
+            {
+                SELF.tumblers.panto1_3 = 0;
+                SELF.elecrto.Panto &=~(1UL << 0);
+                isSound = 1;
+            }
+            if (SELF.tumblers.panto2_4 == 1)
+            {
+                SELF.tumblers.panto2_4 = 0;
+                SELF.elecrto.Panto &=~(1UL << 1);
+                isSound = 1;
+            }
+            if (isSound)
+            {
+                loco->PostTriggerCab(SoundsID::TP_DOWN);
+            }
+        }
+        break;
+    case Tumblers::Tmb_Panto1_3:
+        SELF.tumblers.panto1_3 = _checkSwitchWithSound(loco, Tumblers::Tmb_Panto1_3, SoundsID::Default_Tumbler, 1);
+        if (SELF.tumblers.panto)
+        {
+            if (SELF.tumblers.panto1_3)
+            {
+                SELF.elecrto.Panto |= 1UL << 0;
+                loco->PostTriggerCab(SoundsID::TP_UP);
+            }
+            else
+            {
+                SELF.elecrto.Panto &=~(1UL << 0);
+                {
+                loco->PostTriggerCab(SoundsID::TP_DOWN);
+                }
+            }
+        }
+        break;
+    case Tumblers::Tmb_Panto2_4:
+        SELF.tumblers.panto2_4 = _checkSwitchWithSound(loco, Tumblers::Tmb_Panto2_4, SoundsID::Default_Tumbler, 1);
+        if (SELF.tumblers.panto)
+        {
+            if (SELF.tumblers.panto2_4)
+            {
+                SELF.elecrto.Panto |= 1UL << 1;
+                loco->PostTriggerCab(SoundsID::TP_UP);
+            }
+            else
+            {
+                SELF.elecrto.Panto &=~(1UL << 1);
+                {
+                    loco->PostTriggerCab(SoundsID::TP_DOWN);
+                }
+            }
+        }
+        break;
+    case Arms::Arm_254:
 
- switch(SwitchID){
-  case Tumblers::Tbm_Panto:
-  case Tumblers::Tmb_Panto1_3:
-  case Tumblers::Tmb_Panto2_4:
-     if  (cab->Switch(Tumblers::Tbm_Panto))
-     {
-         if  (cab->Switch(Tumblers::Tmb_Panto1_3))
-             SELF.Panto |= 1UL << 0;
-         else
-             SELF.Panto &=~(1UL << 0);
+        break;
+    case Arms::Arm_394:
+        SELF.pneumo.Arm_394 = 7 -  _checkSwitchWithSound(loco, Arms::Arm_394, SoundsID::Kran_394, 1);
+        break;
 
-         if  (cab->Switch(Tumblers::Tmb_Panto2_4))
-             SELF.Panto |= 1UL << 1;
-         else
-             SELF.Panto &=~(1UL << 1);
-     }
-     else
-         SELF.Panto = 0x0;
-     break;
- default:
-     break;
- }
-
- VL15.checkSwitch(loco, Buttons::Btn_Tifon);
- VL15.checkSwitch(loco, Buttons::Btn_Svistok);
- SELF.pneumo.Arm_254 = 6 - VL15.checkSwitch(loco, Arms::Arm_254);
-
- if (SwitchID == Keys::Key_EPK)
- {
-     if ( loco->Cab()->Switch(Keys::Key_EPK) )
-     {
-         VL15.checkSwitch(loco, Keys::Key_EPK_ON);
-         loco->PostTriggerCab(SAUT::WHITE);
-     }
-     else
-         VL15.checkSwitch(loco, Keys::Key_EPK_OFF);
- }
-
-
- if (SwitchID == Tumblers::Tmb_vozvrBV1 )
- {
-     if (loco->Cab()->Switch(Tumblers::Tmb_BV1) > 0)
-     {
-         loco->PostTriggerCab(Tumblers::Tmb_BV1); // включаем звук
-         SELF.BV_STATE = 1;
-     }
-
- }
- else if  (SwitchID == Tumblers::Tmb_BV1 )
- {
-     if  (VL15.checkSwitch(loco,Tumblers::Tmb_BV1 ) < 1 )
-         SELF.BV_STATE = 0;
- }
-
+    case Buttons::Btn_Tifon:
+        _checkSwitchWithSound(loco, Buttons::Btn_Tifon, Buttons::Btn_Tifon, 0);
+        break;
+    case Buttons::Btn_Svistok:
+        _checkSwitchWithSound(loco, Buttons::Btn_Svistok, Buttons::Btn_Svistok, 0);
+        break;
+    case Buttons::Btn_Pesok:
+        _checkSwitchWithSound(loco, Buttons::Btn_Pesok, SoundsID::PesokButton, 0);
+        break;
+    case Tumblers::Tmb_MK_:
+        SELF.MK =  _checkSwitchWithSound(loco, Tumblers::Tmb_MK_, Default_Tumbler, 1);
+        if (SELF.MK)
+        {
+            loco->PostTriggerCab(SoundsID::MK);
+        }
+        else
+            loco->PostTriggerCab(SoundsID::MK+1);
+        break;
+    case Tumblers::Tmb_MV_low:
+        SELF.MV_low =  _checkSwitchWithSound(loco, Tumblers::Tmb_MV_low, Default_Tumbler, 1);
+        if (SELF.MV_low)
+        {
+            loco->PostTriggerCab(SoundsID::MV_low);
+        }
+        else
+            loco->PostTriggerCab(SoundsID::MV_low + 1);
+        break;
+    case  Keys::Key_EPK:
+        SELF.EPK = _checkSwitchWithSound(loco, Keys::Key_EPK, SoundsID::EPK_INIT, 1);
+        if (SELF.EPK)
+        {
+            loco->PostTriggerCab(SAUT::WHITE);
+        }
+        break;
+    case Tumblers::Tmb_BV1:
+        SELF.tumblers.bv1 = _checkSwitchWithSound(loco, Tumblers::Tmb_BV1, Default_Tumbler, 1);
+        if (SELF.tumblers.bv1 == 0)
+        {
+            loco->PostTriggerCab(SoundsID::BV+1);
+            SELF.BV_STATE = 0;
+        }
+        break;
+    case Tumblers::Tmb_vozvrBV1:
+        if( _checkSwitchWithSound(loco, Tumblers::Tmb_vozvrBV1, Default_Tumbler, 1) == 1 )
+        {
+            if (SELF.tumblers.bv1)
+            {
+                loco->PostTriggerCab(SoundsID::BV);
+                SELF.BV_STATE = 1;
+            }
+        }
+        break;
+    default :
+        break;
+    }
 }
 
 

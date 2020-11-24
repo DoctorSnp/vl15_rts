@@ -37,6 +37,22 @@ typedef struct st_Pneumo
 
 }Pneumo;
 
+typedef struct st_Electric
+{
+int Panto;
+float power;
+}Electric;
+
+typedef struct st_Tumblers
+{
+    int bv1;
+    int bv2_on;
+    int bv2_off;
+    int panto;
+    int panto1_3;
+    int panto2_4;
+}st_Tumblers;
+
 extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEngine *eng,
         unsigned int SwitchID,unsigned int PrevState);
 

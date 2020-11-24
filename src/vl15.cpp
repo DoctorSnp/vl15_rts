@@ -1,4 +1,4 @@
-#include "vl15_logic.h"
+﻿#include "vl15.h"
 
 VL15_logic::VL15_logic()
 {
@@ -11,11 +11,11 @@ bool VL15_logic::init() noexcept
     return true;
 }
 
-int VL15_logic::checkSwitch(const ElectricLocomotive *loco, unsigned short switchElem) noexcept
+/*int VL15_logic::checkSwitch(const ElectricLocomotive *loco, unsigned short switchElem) noexcept
 {
     m_switchedsStates[switchElem] = m_checkSwitch(loco, switchElem);;
     return m_switchedsStates[switchElem];
-}
+}*/
 
 unsigned short VL15_logic::m_checkSwitch(const ElectricLocomotive *loco, unsigned short switchElem) noexcept
 {
