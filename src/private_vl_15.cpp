@@ -6,9 +6,10 @@
 
 int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchElem, int soundId, int singleSound)
 {
+    int elemState = loco->Cab()->Switch(switchElem);
     if (soundId >= 0)
     {
-        if (loco->Cab()->Switch(soundId) > 0)
+        if (elemState > 0)
             loco->PostTriggerCab((unsigned short)soundId); // устанавливаем звук
         else
         {
@@ -16,5 +17,5 @@ int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchEle
                 loco->PostTriggerCab((unsigned short)soundId + 1); // сбрасываем звук
         }
     }
-    return loco->Cab()->Switch(switchElem);
+    return elemState ;
 }

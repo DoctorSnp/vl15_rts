@@ -15,6 +15,8 @@ CONFIG += c++11
 
 SOURCES += \
     src/private_vl_15.cpp \
+    src/radiostation.cpp \
+    src/saut.cpp \
     src/ts.cpp \
     src/utils/utils.cpp \
     src/vl15.cpp \
@@ -24,6 +26,9 @@ HEADERS += \
     src/VL15_global.h \
     VL_15.h \
     src/private_vl_15.h \
+    src/radiostation.h \
+    src/saut.h \
+    src/saut_datatype.h \
     src/ts.h \
     src/utils/utils.h \
     src/vl15_datatypes/cab/section1/elements.h \

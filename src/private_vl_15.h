@@ -21,8 +21,7 @@
 
 /* Q_DECL_EXPORT не было в оригинале */
 
-/*extern "C" void Q_DECL_EXPORT LostMaster
-        (Locomotive *loco,const Locomotive *Prev,unsigned long State);*/
+
 /**
  * @brief _checkSwitchWithSound Возвращает состояние элемента и проигрывает его звук
  * @param loco

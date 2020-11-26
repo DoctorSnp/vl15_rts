@@ -16,6 +16,7 @@ typedef enum sounds
     Revers = 2,
     PesokButton = 4,
     FinalStop = 54,
+    Controller = 900,
 }SoundsID;
 
 typedef enum en_Tumblers
@@ -48,18 +49,6 @@ typedef enum en_Equipment
   SL_2M = 300,
 }Equipment;
 
-typedef enum en_Saut
-{
-    Start_Drive = 204,
-    STATION = 202,
-    Drive_Backward = 203,
-    GREEN = 206,
-    YELLOW = 207,
-    KG = 208,
-    RED = 209,
-    WHITE = 210
-}
-SAUT;
 
 typedef enum en_Arms
 {
