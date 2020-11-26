@@ -10,6 +10,8 @@
 #define NEUTRAL 2
 #define SECTION_DEST_FORWARD 1
 #define SECTION_DEST_BACKWARD -1
+#define SIGNALS_CNT 4
+
 
 PACKED_BEGIN
 
@@ -51,6 +53,7 @@ struct st_Self
 {
   int secdionCabDest;
   int dest; // 1 ,0,  -1
+  unsigned int SignalColor[4];
   st_Tumblers tumblers;
   Electric elecrto;
   Pneumo pneumo;
@@ -66,7 +69,6 @@ struct st_Self
   unsigned int ThrottlePosition;
   int shuntNum;
   st_SAUT sautData;
-  struct SpeedLimitDescr SpeedLimit;
   st_timeForDebug debugTime;
 };
 

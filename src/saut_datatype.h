@@ -1,7 +1,9 @@
 #ifndef SAUT_DATATYPE_H
 #define SAUT_DATATYPE_H
 
+#include "shared_code.h"
 #include "ts.h"
+#include "sys/timeb.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +27,7 @@ typedef struct st_SAUT
  float PrevSpeed;
  struct SpeedLimitDescr SpeedLimit;
  en_Colors forwColor;
+ wchar_t signalName[MAX_STRING_NAME];
 }st_SAUT;
 PACKED_END
 

@@ -29,6 +29,7 @@ HEADERS += \
     src/radiostation.h \
     src/saut.h \
     src/saut_datatype.h \
+    src/shared_code.h \
     src/ts.h \
     src/utils/utils.h \
     src/vl15_datatypes/cab/section1/elements.h \

@@ -5,8 +5,8 @@
 #include "radiostation.h"
 
 #define REPEAT_SECONDS 180 // через сколько секунд повторять следующую реплику
-#define SOUNDS_CNT 35 // кол-во реплик. см sms файл
-#define START_SOUNDS_TRIGGER 1000
+#define SOUNDS_CNT 37 // кол-во реплик. см sms файл
+#define START_SOUNDS_TRIGGER 999
 
 static int randint(int n)
 

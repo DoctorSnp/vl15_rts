@@ -68,7 +68,7 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->var[16]=0.0;
  eng->var[17]=0.0;
  eng->AuxilaryRate=0.0;
-
+ eng->ALSNOn=0;
  eng->EPTvalue = 0.0;
  eng->Reverse = NEUTRAL;
  eng->ThrottlePosition = 1;
@@ -91,16 +91,21 @@ extern "C" bool Q_DECL_EXPORT Init
 }
 
 
-extern "C" void ALSN ( Locomotive *loco, SignalsInfo *sigAhead, UINT NumSigAhead,
+extern "C" void Q_DECL_EXPORT ALSN ( Locomotive *loco, SignalsInfo *sigAhead, UINT NumSigAhead,
     SignalsInfo *sigBack,UINT NumSigBack, SignalsInfo *sigPassed,UINT NumPassed,
         float SpeedLimit, float NextLimit,
         float DistanceToNextLimit, bool Backwards )
 {
-   /* if (NumSigAhead > 0)
-    {
-        sigAhead[0].SignalInfo->Tile
-    }*/
-    Printer_print((ElectricEngine*)loco->Eng(), GMM_POST, L"ALSN\n");
+
+    for (UINT i=0; i< NumSigAhead && i < SIGNALS_CNT; i++)
+        SELF.SignalColor[i] = sigAhead->Aspect[i];
+
+    SELF.sautData.SpeedLimit.Distance = DistanceToNextLimit;
+    SELF.sautData.SpeedLimit.Limit = SpeedLimit * 3.6;
+    SELF.sautData.SpeedLimit.NextLimit = NextLimit * 3.6;
+
+    Printer_print((ElectricEngine*)loco->Eng(), GMM_POST, L"Limit %f ALSN Signs: %d\n",
+                  SELF.sautData.SpeedLimit.Limit, NumSigAhead);
 
 }
 
@@ -109,39 +114,8 @@ extern "C" void Q_DECL_EXPORT Run
  (ElectricEngine *eng,const ElectricLocomotive *loco,unsigned long State,
         float time,float AirTemperature)
 {
- VL15_Step(loco, eng, &SELF);
- return;
- float Voltage = SELF.elecrto.LineVoltage;
- float SetForce = 0.0;
- if(SELF.Velocity <= 3.01)
-     SetForce= 400000.0 * (SELF.ThrottlePosition-1);
- else
- {
-     SetForce = 680000.0 * (SELF.ThrottlePosition-1);
-     /*SetForce = (680000.0*eng->ThrottlePosition)/
-                   (SELF.Velocity*SELF.Velocity*std::pow(0.978,eng->ThrottlePosition)) +
-                   SELF.shuntNum*468750.0/SELF.Velocity;*/
- }
 
-   SetForce*= eng->Reverse*(Voltage/4000.0);
-
-   //eng->Force=eng->var[12];
-   //eng->Force = SetForce;
-   if(eng->Force<SetForce)
-   {
-       eng->Force+=(10000.0+(SetForce-eng->Force)*0.6)*time;
-       if(eng->Force>SetForce)
-           eng->Force=SetForce;
-   }else if(eng->Force>SetForce)
-   {
-       //eng->Force-=3000.0*time;
-       if(eng->Force<SetForce)
-           eng->Force=SetForce;
-   }
-
-   eng->Force *= float(SELF.secdionCabDest) * float(SELF.BV_STATE);
-   //Printer_print(eng, GMM_POST, L"Force %f\n", eng->Force);
-   return; // с этим ретурном работат
+    VL15_Step(loco, eng, &SELF);
 
 }
 
@@ -345,6 +319,6 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
 extern "C" void Q_DECL_EXPORT SpeedLimit(const Locomotive *loco,
         SpeedLimitDescr Route,SpeedLimitDescr Signal,SpeedLimitDescr Event)
 {
-    SELF.sautData.SpeedLimit =  Event;
+    //SELF.sautData.SpeedLimit =  Event;
 
 }

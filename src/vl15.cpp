@@ -1,8 +1,23 @@
 ﻿#include <sys/timeb.h>
+#include <stdio.h>
+
+#include <wchar.h>
+#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES 1
+#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT 1
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <crtdbg.h>  // For _CrtSetReportMode
+#include <errno.h>
+
+
 #include "utils/utils.h"
 #include "saut.h"
 #include "math.h"
 #include "vl15.h"
+
+
 
 
 /*Закрытые функции */
@@ -33,8 +48,8 @@ bool VL15_init(st_Self *self)
     Radiostation_Init(&self->radio);
     Radiostation_setEnabled(&self->radio, 1);
 
-    self->sautData.SpeedLimit.Limit = -1.0;
-    self->sautData.SpeedLimit.Distance = -1.0;
+    self->sautData.SpeedLimit.Limit = 0.0;
+    self->sautData.SpeedLimit.Distance = 0.0;
     return true;
 }
 
@@ -46,8 +61,17 @@ void VL15_set_destination(st_Self *self, int SectionDest)
 int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self)
 {
     /*Грузим данные из движка себе в МОЗГИ*/
-    self->Velocity = fabs(loco->Velocity) * 2.5;
+    self->Velocity = fabs(loco->Velocity) * 3.6; // переводим из м/с в км/ч
     static int prevEpk = self->EPK;
+
+    //eng->cab->Signal.Flags
+
+    //self->SignalColor = eng->cab->SignalAspects[0];
+    //self->sautData.SpeedLimit.Distance = eng->cab->Signal.Distance;
+    //self->sautData.SpeedLimit.Limit = eng->cab->Signal.SpeedLimit;
+    //self->sautData.SpeedLimit.NextLimit = 40;
+    wchar_t* name = eng->cab->Signal.SignalInfo->Name;
+    swprintf(self->sautData.signalName, sizeof(self->sautData.signalName),  L"%s", name);
 
     self->sautData.PrevSpeed = self->prevVelocity;
     self->sautData.CurrSpeed = self->Velocity;
@@ -73,14 +97,14 @@ int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self
         if (prevEpk == 0)
             saut.start(loco, eng, self->sautData);
         else
-            saut.stop();
+            saut.stop(loco, eng);
         prevEpk = self->EPK;
     }
     else
         saut.step(loco, eng, self->sautData);
 
     /*А тепер пихаем из наших МОЗГОВ данные в движок*/
-    eng->Panto = ((unsigned char)self->elecrto.PantoRaised);// (PantoRaised);
+    eng->Panto = ((unsigned char)self->elecrto.PantoRaised);
     eng->ThrottlePosition = self->ThrottlePosition;
     eng->Reverse = self->Reverse;
     eng->IndependentBrakeValue= ( self->pneumo.Arm_254 - 1) * 1.0;
@@ -91,29 +115,13 @@ int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self
     float SetForce = _getForce (self);
 
     if(self->Velocity <= 3.01)
-        SetForce *= 40000.0;
+        SetForce *= 4000.0;
     else
     {
-        SetForce *= 68000.0;
-        /*SetForce = (680000.0*eng->ThrottlePosition)/
-                      (SELF.Velocity*SELF.Velocity*std::pow(0.978,eng->ThrottlePosition)) +
-                      SELF.shuntNum*468750.0/SELF.Velocity;*/
+        SetForce *= 6800.0;
     }
 
     eng->Force = SetForce;
-     /*
-      if(eng->Force<SetForce)
-      {
-          eng->Force+=(10000.0+(SetForce-eng->Force)*0.6);
-          if(eng->Force>SetForce)
-              eng->Force=SetForce;
-      }else if(eng->Force>SetForce)
-      {
-          //eng->Force-=3000.0*time;
-          if(eng->Force<SetForce)
-              eng->Force=SetForce;
-      }*/
-
      _debugPrint(loco, eng, self);
     // так как у нас всегда всё нормалёк - возвращаем 1
     return 1;
@@ -201,13 +209,12 @@ static void _debugPrint(const ElectricLocomotive *loco, ElectricEngine *eng, st_
     if ((self->debugTime.prevTime.time + 1) > self->debugTime.currTime.time)
         return;
 
-    unsigned int Aspect = eng->cab->Signal.Aspect[0];
-    float DistanceToSig=eng->cab->Signal.Distance;
-    Printer_print(eng, GMM_POST, L"SomeVar %f Aspect: %u, Dist to sig: %f"
-                  "Speed: %f Force: %f\n",
-                 eng->var[6], Aspect, DistanceToSig, self->Velocity,
-            eng->Force);
-    self->debugTime.prevTime = self->debugTime.currTime;
+
+    /*Printer_print(eng, GMM_POST, L"SomeVar %f SigColor: %u, Dist to sig: %f"
+                  "Speed: %f Limit: %f NextLimit: %f Force: %f SigName: %s\n",
+                eng->var[6], self->SignalColor, self->sautData.SpeedLimit.Distance, self->Velocity,
+                self->sautData.SpeedLimit.Limit, self->sautData.SpeedLimit.NextLimit,  eng->Force, self->sautData.signalName);
+    self->debugTime.prevTime = self->debugTime.currTime;*/
 
 }
 
@@ -219,16 +226,14 @@ static void _debugPrint(const ElectricLocomotive *loco, ElectricEngine *eng, st_
 static en_Colors _getForwardSignColor(ElectricEngine *eng)
 {
     unsigned int Aspect = eng->cab->Signal.Aspect[0];
-    if (Aspect == 7)
+    if ( (Aspect == SIGASP_CLEAR_1 ) || (Aspect == SIGASP_CLEAR_2) )
         return en_Colors::COLOR_GREEN;
-    else if (Aspect == 6)
+    else if ( (Aspect == SIGASP_APPROACH_1) || (Aspect == SIGASP_APPROACH_2) || (Aspect == SIGASP_APPROACH_3) )
         return en_Colors::COLOR_YELLOW;
-    else if (Aspect == 5)
+    else if (Aspect == SIGASP_STOP_AND_PROCEED)
         return en_Colors::COLOR_RD_YEL;
-    else if (Aspect == 4)
-        return en_Colors::COLOR_RED;
-    else if (Aspect == 2)
+    else if (Aspect == SIGASP_RESTRICTING)
         return en_Colors::COLOR_WHITE;
-    else
-        return en_Colors::UNSET;
+    else // по идее 0 и 8
+        return en_Colors::COLOR_RED;
 }

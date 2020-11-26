@@ -13,15 +13,22 @@
 #define MAXMSGQUEUE   16
 
 
-#define SIGASP_STOP 0
-#define SIGASP_STOP_AND_PROCEED 1
-#define SIGASP_RESTRICTING   2
+#define SIGASP_STOP 0 // КРАСНЫЙ
+#define SIGASP_STOP_AND_PROCEED 1 // КЖ
+#define SIGASP_RESTRICTING   2  // БЕЛЫЙ
+
+// ЖЁЛТЫЙ
 #define SIGASP_APPROACH_1    3
 #define SIGASP_APPROACH_2    4
 #define SIGASP_APPROACH_3    5
+
+// ЗЕЛЁНЫЙ
 #define SIGASP_CLEAR_1       6
 #define SIGASP_CLEAR_2       7
+
+// КРАСНЫЙ
 #define SIGASP_BLOCK_OBSTRUCTED 8
+
 #define SIGASP_FAILED        9
 
 
