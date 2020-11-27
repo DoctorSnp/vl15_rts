@@ -86,7 +86,8 @@ extern "C" bool Q_DECL_EXPORT Init
  }
 
  SELF.dest = -1;
- return VL15_init(&SELF);
+ return VL15_init(loco, &SELF);
+
 
 }
 
@@ -97,15 +98,12 @@ extern "C" void Q_DECL_EXPORT ALSN ( Locomotive *loco, SignalsInfo *sigAhead, UI
         float DistanceToNextLimit, bool Backwards )
 {
 
-    for (UINT i=0; i< NumSigAhead && i < SIGNALS_CNT; i++)
-        SELF.SignalColor[i] = sigAhead->Aspect[i];
-
     SELF.sautData.SpeedLimit.Distance = DistanceToNextLimit;
     SELF.sautData.SpeedLimit.Limit = SpeedLimit * 3.6;
     SELF.sautData.SpeedLimit.NextLimit = NextLimit * 3.6;
-
-    Printer_print((ElectricEngine*)loco->Eng(), GMM_POST, L"Limit %f ALSN Signs: %d\n",
-                  SELF.sautData.SpeedLimit.Limit, NumSigAhead);
+    VL15_ALSN(loco, NumSigAhead, sigAhead, NumSigBack, sigBack, &SELF);
+   //Printer_print((ElectricEngine*)loco->Eng(), GMM_POST, L"Limit %f ALSN Signs: %d\n",
+   //               SELF.sautData.SpeedLimit.Limit, NumSigAhead);
 
 }
 
@@ -183,7 +181,7 @@ extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco,const El
 extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEngine *eng,
         unsigned int SwitchID,unsigned int PrevState)
 {
-
+    Printer_print(eng, GMM_POST, L"Switched %d\n", SwitchID);
     switch(SwitchID)
     {
     case Tumblers::Tmb_Panto:
@@ -194,8 +192,8 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
             if  (SELF.tumblers.panto1_3 == 1)
             {
                 SELF.tumblers.panto1_3 = 0;
-                SELF.elecrto.PantoRaised &=~(1UL << 1);
-                SELF.elecrto.PantoRaised &=~(1UL << 3);
+                SELF.elecrto.PantoRaised &=~(1UL << 0);
+                SELF.elecrto.PantoRaised &=~(1UL << 2);
                 isSound = 1;
             }
             if (SELF.tumblers.panto2_4 == 1)
@@ -208,6 +206,26 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
             if (isSound)
             {
                 loco->PostTriggerCab(SoundsID::TP_DOWN);
+            }
+        }
+        else
+        {
+            int isSound =0;
+            if  (SELF.tumblers.panto1_3 == 1)
+            {
+                SELF.elecrto.PantoRaised |=~(1UL << 0);
+                SELF.elecrto.PantoRaised |=~(1UL << 2);
+                isSound = 1;
+            }
+            if (SELF.tumblers.panto2_4 == 1)
+            {
+                SELF.elecrto.PantoRaised |=~(1UL << 1);
+                SELF.elecrto.PantoRaised |=~(1UL << 3);
+                isSound = 1;
+            }
+            if (isSound)
+            {
+                loco->PostTriggerCab(SoundsID::TP_UP);
             }
         }
         break;
@@ -255,14 +273,18 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
         break;
 
     case Buttons::Btn_Tifon:
-        _checkSwitchWithSound(loco, Buttons::Btn_Tifon, Buttons::Btn_Tifon, 0);
+        _checkSwitchWithSound(loco, Buttons::Btn_Tifon, Buttons::Btn_Tifon, 0, 2);
         break;
     case Buttons::Btn_Svistok:
-        _checkSwitchWithSound(loco, Buttons::Btn_Svistok, Buttons::Btn_Svistok, 0);
+        _checkSwitchWithSound(loco, Buttons::Btn_Svistok, Buttons::Btn_Svistok, 0, 2);
         break;
     case Buttons::Btn_Pesok:
         _checkSwitchWithSound(loco, Buttons::Btn_Pesok, SoundsID::PesokButton, 0);
         break;
+    case Buttons::Btn_RescueBrake:
+        SELF.RB = _checkSwitchWithSound(loco, Buttons::Btn_RescueBrake, SoundsID::Default_Button, 0);
+        break;
+
     case Tumblers::Tmb_MK_:
         SELF.MK =  _checkSwitchWithSound(loco, Tumblers::Tmb_MK_, Default_Tumbler, 1);
         if (SELF.MK)
@@ -303,6 +325,13 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
             }
         }
       break;
+    case Tumblers::Tmb_Searchlight_Dimly:
+        SELF.tumblers.projHalf = _checkSwitchWithSound(loco, Tumblers::Tmb_Searchlight_Dimly, Default_Tumbler, 1);
+        break;
+    case Tumblers::Tmb_Searchlight_Bright:
+        SELF.tumblers.projFull = _checkSwitchWithSound(loco, Tumblers::Tmb_Searchlight_Bright, Default_Tumbler, 1);
+        break;
+
     case Arms::Arm_Reverse:
         SELF.Reverse = _checkSwitchWithSound(loco,  Arms::Arm_Reverse, SoundsID::Revers, 1);
         break;

@@ -21,6 +21,9 @@
 
 /* Q_DECL_EXPORT не было в оригинале */
 
+void _playSound(const ElectricLocomotive *loco, int soundId, int where = 0 );
+
+int _checkSwitch(const ElectricLocomotive *loco, unsigned int switchElem);
 
 /**
  * @brief _checkSwitchWithSound Возвращает состояние элемента и проигрывает его звук
@@ -29,7 +32,7 @@
  * @param soundId
  * @return
  */
-int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchElem, int soundId, int singleSound);
+int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchElem, int soundId, int singleSound, int where =0);
 
 #define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
 

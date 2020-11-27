@@ -9,6 +9,8 @@ constexpr int TIME_FOR_DISABLE_TYAGA = 20;
 constexpr int TIME_FOR_EPK_START = 14;
 constexpr int TIME_FOR_EPK_BRAKE = TIME_FOR_EPK_START + 14;
 
+constexpr int WHITE_LIMIT = 40; // ограничение на 40 км
+
 SAUT::SAUT()
 {}
 
@@ -48,18 +50,31 @@ int SAUT::step(const ElectricLocomotive *loco, ElectricEngine *eng, st_SAUT exte
     if (isEnabled == 0)
         return SAUT_DISABLED;
 
-    static en_Colors prevColor = externalData.forwColor;
+    static en_SignColors prevColor = externalData.forwardSignalColor;
+    float prevSpeed = m_Data.PrevSpeed;
     m_Data = externalData;
-    if (prevColor != externalData.forwColor)
+    m_Data.PrevSpeed = prevSpeed;
+
+
+    /*корректируем красный/белый*/
+    if (externalData.forwardSignalColor == COLOR_RED)
+    {    if (prevColor != en_SignColors::COLOR_RD_YEL)
+            m_Data.forwardSignalColor = en_SignColors::COLOR_WHITE;
+    }
+
+    if (prevColor != externalData.forwardSignalColor)
     {
         m_playColor(loco);
-        prevColor = externalData.forwColor;
-        if (externalData.forwColor != en_Colors::COLOR_GREEN)
+        prevColor = externalData.forwardSignalColor;
+        if (externalData.forwardSignalColor != en_SignColors::COLOR_GREEN)
         {
             if (loco->Velocity != 0.0)
                 return EPK_ALARM;
         }
     }
+
+    if ( (m_Data.forwardSignalColor == en_SignColors::COLOR_WHITE) && (WHITE_LIMIT > -1))
+        m_Data.SpeedLimit.Limit = WHITE_LIMIT;
 
     if ( loco->Velocity == 0.0)
         return isEnabled;
@@ -67,11 +82,11 @@ int SAUT::step(const ElectricLocomotive *loco, ElectricEngine *eng, st_SAUT exte
     ftime(&m_InternalState.currTime);
     m_updateSoundsTime();
 
-    if ( m_Data.SpeedLimit.Limit <= m_Data.CurrSpeed )
+    if ( m_Data.SpeedLimit.Limit < m_Data.CurrSpeed )
     {
         m_Sound_DisableTyaga(loco);
         m_Sound_Pick(loco);
-
+        return EPK_ALARM;
     }
     else  if ((m_Data.SpeedLimit.Limit - 2.0) <= m_Data.CurrSpeed)
     {
@@ -79,27 +94,29 @@ int SAUT::step(const ElectricLocomotive *loco, ElectricEngine *eng, st_SAUT exte
          m_Sound_Pick(loco);
     }
 
-    if ( (externalData.PrevSpeed == 0.0) && (std::fabs(externalData.CurrSpeed) > 0.0) )
+    if ( (m_Data.PrevSpeed == 0.0) && (std::fabs(m_Data.CurrSpeed) > 0.0) )
     {
         if (externalData.CurrSpeed)
             loco->PostTriggerCab(SAUT_sounds::Start_Drive);
         else
             loco->PostTriggerCab(SAUT_sounds::Drive_Backward);
+        m_Data.PrevSpeed = m_Data.CurrSpeed;
+        return EPK_ALARM;
     }
 
-
+    m_Data.PrevSpeed = m_Data.CurrSpeed;
     return SAUT_ENABLED;
 }
 
 void SAUT::m_playColor(const ElectricLocomotive *loco)
 {
-    if (m_Data.forwColor == en_Colors::COLOR_GREEN)
+    if (m_Data.forwardSignalColor == en_SignColors::COLOR_GREEN)
         loco->PostTriggerCab(SAUT_sounds::GREEN);
-    else if (m_Data.forwColor == en_Colors::COLOR_YELLOW)
+    else if (m_Data.forwardSignalColor == en_SignColors::COLOR_YELLOW)
         loco->PostTriggerCab(SAUT_sounds::YELLOW);
-    else if (m_Data.forwColor == en_Colors::COLOR_RD_YEL)
+    else if (m_Data.forwardSignalColor == en_SignColors::COLOR_RD_YEL)
         loco->PostTriggerCab(SAUT_sounds::KG);
-    else if (m_Data.forwColor == en_Colors::COLOR_RED)
+    else if (m_Data.forwardSignalColor == en_SignColors::COLOR_RED)
         loco->PostTriggerCab(SAUT_sounds::RED);
     else
         loco->PostTriggerCab(SAUT_sounds::WHITE);

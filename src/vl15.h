@@ -15,6 +15,13 @@
 
 PACKED_BEGIN
 
+/*разные флаги локомотива*/
+typedef struct st_Flags
+{
+    int EPK_Triggered;
+}st_Flags;
+
+
 typedef struct st_Pneumo
 {
   int Arm_254;
@@ -38,6 +45,8 @@ typedef struct st_Tumblers
     int panto;
     int panto1_3;
     int panto2_4;
+    int projHalf;
+    int projFull;
 }st_Tumblers;
 
 typedef struct st_timeForDebug
@@ -51,6 +60,8 @@ typedef struct st_timeForDebug
  */
 struct st_Self
 {
+  st_Flags flags;
+  int brake394_pos;
   int secdionCabDest;
   int dest; // 1 ,0,  -1
   unsigned int SignalColor[4];
@@ -62,6 +73,7 @@ struct st_Self
   bool SL2M_Ticked;
   int BV_STATE;
   int EPK;
+  int RB;
   int MK;
   int MV_low;
   st_Radiostation radio;
@@ -74,9 +86,10 @@ struct st_Self
 
 PACKED_END
 
-bool VL15_init(struct st_Self *self);
+bool VL15_init(const ElectricLocomotive *loco, struct st_Self *self);
 void VL15_set_destination(st_Self *self, int dest);
-
+void VL15_ALSN(const Locomotive *loco, UINT NumSigAhead, SignalsInfo *sigAhead, UINT NumSigBack,
+               SignalsInfo *sigBack, struct st_Self *self);
 int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, struct st_Self *self);
 
 #endif // VL15_LOGIC_H

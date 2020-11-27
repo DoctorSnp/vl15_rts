@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-typedef enum en_Colors
+typedef enum en_SignColors
 {
   UNSET = -1,
   COLOR_WHITE = 0,
@@ -18,15 +18,17 @@ typedef enum en_Colors
   COLOR_YELLOW = 3,
   COLOR_GREEN = 4,
 
-}en_Colors;
+}en_SignColors;
 
 PACKED_BEGIN
 typedef struct st_SAUT
 {
  float CurrSpeed;
  float PrevSpeed;
+ en_SignColors prevSignalColor;
+ en_SignColors forwardSignalColor;
  struct SpeedLimitDescr SpeedLimit;
- en_Colors forwColor;
+ int AspectSignal;
  wchar_t signalName[MAX_STRING_NAME];
 }st_SAUT;
 PACKED_END

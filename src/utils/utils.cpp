@@ -13,7 +13,7 @@ void  Printer_print( ElectricEngine *eng, int dbgLevel, const wchar_t *format, .
 {
     va_list args;
     va_start(args, format);
-    wchar_t text[1024];
+    wchar_t text[2048];
     vswprintf_s(text, sizeof (text), format, args);
     va_end(args);
 

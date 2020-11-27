@@ -25,23 +25,39 @@ void EPK::setEnabled(const ElectricLocomotive *loco, int isEnabled)
     }
 }
 
+void EPK::okey(const ElectricLocomotive *loco)
+{
+    if (m_state == en_EPKState::EPK_Svist) // можно только если ЭПК не сорвало.
+    {
+        m_state = en_EPKState::EPK_Normal;
+        loco->PostTriggerCab(SoundsID::EPK_ALARM_S + 1);
+    }
+}
+
 int EPK::step(const ElectricLocomotive *loco, int state)
 {
-    if ((state == EPK_ACTIVATING) || (m_state == en_EPKState::EPK_ACTIVATING ))
+    ftime(&currTime);
+    if ((state == EPK_ACTIVATING) || (m_state != en_EPKState::EPK_Normal ))
     {
-        if (m_state != en_EPKState::EPK_ACTIVATING)
+        if (m_state == en_EPKState::EPK_ACTIVATING)
+            return 1;
+        if (m_state == en_EPKState::EPK_Normal)
         {
-            m_state = en_EPKState::EPK_ACTIVATING;
-            ftime(&prevTime);
-            ftime(&currTime);
+            m_state = en_EPKState::EPK_Svist;
+            //ftime(&prevTime);
         }
         ftime(&currTime);
         if (prevTime.time + 5 <= currTime.time )
         {
             loco->PostTriggerCab(SoundsID::EPK_ALARM_S);
-            if (prevTime.time + 10 <= currTime.time)
+            if (prevTime.time + 12 <= currTime.time)
+            {
+                m_state =  en_EPKState::EPK_ACTIVATING;
                 return 1;
+            }
         }
     }
+    else
+        ftime(&prevTime);
     return 0;
 }

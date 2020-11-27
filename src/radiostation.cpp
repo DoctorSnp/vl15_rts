@@ -1,10 +1,12 @@
 #include <assert.h>
 #include <random>
+#include <time.h>
+#include <stdlib.h>
 
 #include "utils/utils.h"
 #include "radiostation.h"
 
-#define REPEAT_SECONDS 180 // через сколько секунд повторять следующую реплику
+#define REPEAT_SECONDS 120 // через сколько секунд повторять следующую реплику
 #define SOUNDS_CNT 37 // кол-во реплик. см sms файл
 #define START_SOUNDS_TRIGGER 999
 
@@ -40,6 +42,7 @@ static int randint(int n)
 
 void Radiostation_Init(st_Radiostation *radio)
 {
+    srand(time(NULL));
     ftime(&radio->prevTime);
 }
 
@@ -52,7 +55,7 @@ void Radiostation_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_R
 
     if ( radio->prevTime.time + (REPEAT_SECONDS) <=  radio->currTime.time  )
     {
-        int trigger = randint(SOUNDS_CNT -1);
+        int trigger = rand() % (SOUNDS_CNT -1); // randint(SOUNDS_CNT -1);
         radio->prevTime.time = radio->currTime.time;
         loco->PostTriggerCab((unsigned short) ( START_SOUNDS_TRIGGER + trigger)); // устанавливаем звук
     }

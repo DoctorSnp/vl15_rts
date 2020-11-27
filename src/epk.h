@@ -18,6 +18,7 @@ public:
     EPK();
     int init();
     void setEnabled(const ElectricLocomotive *loco, int isEnabled);
+    void okey(const ElectricLocomotive *loco);
     int step(const ElectricLocomotive *loco, int state);
 private:
     en_EPKState m_state = EPK_Normal;

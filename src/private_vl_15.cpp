@@ -4,17 +4,32 @@
 
 #include "private_vl_15.h"
 
-int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchElem, int soundId, int singleSound)
+void _playSound(const ElectricLocomotive *loco, int soundId, int where )
+{
+    if (where == 2)
+        loco->PostTriggerBoth((unsigned short)soundId);
+    else if (where == 1)
+        loco->PostTriggerEng((unsigned short)soundId);
+    else
+        loco->PostTriggerCab((unsigned short)soundId);
+}
+
+int _checkSwitch(const ElectricLocomotive *loco, unsigned int switchElem)
+{
+    return loco->Cab()->Switch(switchElem);
+}
+
+int _checkSwitchWithSound(const ElectricLocomotive *loco, unsigned int switchElem, int soundId, int singleSound, int where)
 {
     int elemState = loco->Cab()->Switch(switchElem);
     if (soundId >= 0)
     {
         if (elemState > 0)
-            loco->PostTriggerCab((unsigned short)soundId); // устанавливаем звук
+            _playSound(loco, soundId, where); // устанавливаем звук
         else
         {
             if (!singleSound) // если не PlayOneShot
-                loco->PostTriggerCab((unsigned short)soundId + 1); // сбрасываем звук
+                _playSound(loco, soundId + 1); // сбрасываем звук
         }
     }
     return elemState ;

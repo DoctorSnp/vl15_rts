@@ -114,10 +114,6 @@ typedef enum {
 
 } RTSObjType;
 
-
-
-
-
 struct Wagon;
 struct Locomotive;
 struct Cabin;

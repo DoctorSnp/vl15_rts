@@ -2,9 +2,28 @@
 #define ELEMENTS_H
 
 
+typedef enum en_Lights
+{
+   Light_Proj_Half1 = 0,
+   Light_Proj_Half2 = 6,
+   Light_Proj_Half3 = 12,
+   Light_Proj_Half4 = 18,
+
+   Light_Proj_Full1 = 1,
+   Light_Proj_Full2 = 7,
+   Light_Proj_Full3 = 13,
+   Light_Proj_Full4 = 19,
+   Light_Proj_Full5= 30,
+   Light_Proj_Full6= 31,
+   Light_Proj_Full7= 32,
+   Light_Proj_Full8= 33,
+
+}en_Lights;
+
 typedef enum sounds
 {
     Default_Tumbler = 24,
+    Default_Button = 25, // 26 не занимать!
     Kran_254 = 51,
     Kran_394 = 52,
     BV = 17,
@@ -19,7 +38,10 @@ typedef enum sounds
     PesokButton = 4,
     FinalStop = 54,
     Controller = 900,
-    Extr_Torm = 130,
+    Kran394_Otpusk = 124,
+    Kran394_Poezdnoe = 126,
+    Kran394_Slugebnoe = 128,
+    Kran394_Extrennoe = 130,
 }SoundsID;
 
 typedef enum en_Tumblers
@@ -44,6 +66,7 @@ typedef enum en_Buttons
     Btn_Svistok = 37,
     Btn_Tifon = 39,
     Btn_Pesok = 29,
+    Btn_RescueBrake = 38
 }Buttons;
 
 
