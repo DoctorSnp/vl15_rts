@@ -45,16 +45,28 @@ int SAUT::stop(const ElectricLocomotive *loco, ElectricEngine *eng)
 
 int SAUT::step(const ElectricLocomotive *loco, ElectricEngine *eng, st_SAUT externalData)
 {
-
     if (isEnabled == 0)
-        return 0;
+        return SAUT_DISABLED;
+
+    static en_Colors prevColor = externalData.forwColor;
+    m_Data = externalData;
+    if (prevColor != externalData.forwColor)
+    {
+        m_playColor(loco);
+        prevColor = externalData.forwColor;
+        if (externalData.forwColor != en_Colors::COLOR_GREEN)
+        {
+            if (loco->Velocity != 0.0)
+                return EPK_ALARM;
+        }
+    }
+
     if ( loco->Velocity == 0.0)
-        return 0;
+        return isEnabled;
 
     ftime(&m_InternalState.currTime);
     m_updateSoundsTime();
 
-    m_Data = externalData;
     if ( m_Data.SpeedLimit.Limit <= m_Data.CurrSpeed )
     {
         m_Sound_DisableTyaga(loco);
@@ -67,7 +79,6 @@ int SAUT::step(const ElectricLocomotive *loco, ElectricEngine *eng, st_SAUT exte
          m_Sound_Pick(loco);
     }
 
-    static en_Colors prevColor = externalData.forwColor;
     if ( (externalData.PrevSpeed == 0.0) && (std::fabs(externalData.CurrSpeed) > 0.0) )
     {
         if (externalData.CurrSpeed)
@@ -76,13 +87,8 @@ int SAUT::step(const ElectricLocomotive *loco, ElectricEngine *eng, st_SAUT exte
             loco->PostTriggerCab(SAUT_sounds::Drive_Backward);
     }
 
-    if (prevColor != externalData.forwColor)
-    {
-        m_playColor(loco);
-        prevColor = externalData.forwColor;
-    }
 
-    return 1;
+    return SAUT_ENABLED;
 }
 
 void SAUT::m_playColor(const ElectricLocomotive *loco)
@@ -95,13 +101,8 @@ void SAUT::m_playColor(const ElectricLocomotive *loco)
         loco->PostTriggerCab(SAUT_sounds::KG);
     else if (m_Data.forwColor == en_Colors::COLOR_RED)
         loco->PostTriggerCab(SAUT_sounds::RED);
-    else if (m_Data.forwColor == en_Colors::COLOR_WHITE )
-        loco->PostTriggerCab(SAUT_sounds::WHITE);
     else
-    {
-        loco->PostTriggerCab(SAUT_sounds::STO);
-        //loco->PostTriggerCab(SAUT_sounds::PICK);
-    }
+        loco->PostTriggerCab(SAUT_sounds::WHITE);
 }
 
 /* обновляет время для начала звучаний */

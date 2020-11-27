@@ -13,6 +13,8 @@
 
 
 #include "utils/utils.h"
+
+#include "epk.h"
 #include "saut.h"
 #include "math.h"
 #include "vl15.h"
@@ -33,6 +35,7 @@ static void _debugPrint(const ElectricLocomotive *loco, ElectricEngine *eng, st_
 
 
 static SAUT saut;
+static EPK epk;
 
 bool VL15_init(st_Self *self)
 {
@@ -60,16 +63,11 @@ void VL15_set_destination(st_Self *self, int SectionDest)
 
 int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self)
 {
+
     /*Грузим данные из движка себе в МОЗГИ*/
     self->Velocity = fabs(loco->Velocity) * 3.6; // переводим из м/с в км/ч
     static int prevEpk = self->EPK;
 
-    //eng->cab->Signal.Flags
-
-    //self->SignalColor = eng->cab->SignalAspects[0];
-    //self->sautData.SpeedLimit.Distance = eng->cab->Signal.Distance;
-    //self->sautData.SpeedLimit.Limit = eng->cab->Signal.SpeedLimit;
-    //self->sautData.SpeedLimit.NextLimit = 40;
     wchar_t* name = eng->cab->Signal.SignalInfo->Name;
     swprintf(self->sautData.signalName, sizeof(self->sautData.signalName),  L"%s", name);
 
@@ -101,13 +99,25 @@ int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self
         prevEpk = self->EPK;
     }
     else
-        saut.step(loco, eng, self->sautData);
+    {   int currEpkState = epk.step(loco,  saut.step(loco, eng, self->sautData));
+        /*static int emergencyStop = currEpkState;
+        if ( (currEpkState ) || (self->pneumo.Arm_254 == 6) )
+        {
+               loco->PostTriggerCab(SoundsID::Extr_Torm);
+               eng->IndependentBrakeValue = 6.0;
+               emergencyStop = 0;
+        }*/
+    }
+
 
     /*А тепер пихаем из наших МОЗГОВ данные в движок*/
     eng->Panto = ((unsigned char)self->elecrto.PantoRaised);
     eng->ThrottlePosition = self->ThrottlePosition;
     eng->Reverse = self->Reverse;
     eng->IndependentBrakeValue= ( self->pneumo.Arm_254 - 1) * 1.0;
+
+
+
     self->prevVelocity = self->Velocity;
 
 
@@ -117,9 +127,7 @@ int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self
     if(self->Velocity <= 3.01)
         SetForce *= 4000.0;
     else
-    {
         SetForce *= 6800.0;
-    }
 
     eng->Force = SetForce;
      _debugPrint(loco, eng, self);

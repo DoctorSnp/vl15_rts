@@ -9,6 +9,8 @@ typedef enum sounds
     Kran_394 = 52,
     BV = 17,
     EPK_INIT = 106,
+    EPK_OFF = 107,
+    EPK_ALARM_S = 56, // 57 не занимать!
     TP_UP = 13,
     TP_DOWN = 14,
     MK = 101,
@@ -17,6 +19,7 @@ typedef enum sounds
     PesokButton = 4,
     FinalStop = 54,
     Controller = 900,
+    Extr_Torm = 130,
 }SoundsID;
 
 typedef enum en_Tumblers

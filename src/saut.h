@@ -4,6 +4,10 @@
 #include "ts.h"
 #include "saut_datatype.h"
 
+#define SAUT_ENABLED 1
+#define SAUT_DISABLED 0
+#define EPK_ALARM 2
+
 typedef enum en_Saut
 {
     SAUT_OFF = 200,

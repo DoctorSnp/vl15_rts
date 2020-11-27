@@ -14,6 +14,7 @@ CONFIG += c++11
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    src/epk.cpp \
     src/private_vl_15.cpp \
     src/radiostation.cpp \
     src/saut.cpp \
@@ -25,6 +26,7 @@ SOURCES += \
 HEADERS += \
     src/VL15_global.h \
     VL_15.h \
+    src/epk.h \
     src/private_vl_15.h \
     src/radiostation.h \
     src/saut.h \
