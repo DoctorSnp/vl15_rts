@@ -16,7 +16,7 @@ int EPK::init()
     return 1;
 }
 
-void EPK::setEnabled(const ElectricLocomotive *loco, int isEnabled)
+void EPK::setEnabled(const Locomotive *loco, int isEnabled)
 {
     if (isEnabled == 0)
     {
@@ -25,7 +25,7 @@ void EPK::setEnabled(const ElectricLocomotive *loco, int isEnabled)
     }
 }
 
-void EPK::okey(const ElectricLocomotive *loco)
+void EPK::okey(const Locomotive *loco)
 {
     if (m_state == en_EPKState::EPK_Svist) // можно только если ЭПК не сорвало.
     {
@@ -34,7 +34,7 @@ void EPK::okey(const ElectricLocomotive *loco)
     }
 }
 
-int EPK::step(const ElectricLocomotive *loco, int state)
+int EPK::step(const Locomotive *loco, int state)
 {
     ftime(&currTime);
     if ((state == EPK_ACTIVATING) || (m_state != en_EPKState::EPK_Normal ))

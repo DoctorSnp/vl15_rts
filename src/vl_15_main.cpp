@@ -18,7 +18,7 @@
 #pragma argsused
 
 #define TR_CURRENT_C 272.0
-
+#define TO_KM_PH (3.6)
 
 static struct st_Self SELF;
 
@@ -47,12 +47,15 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->Sanding=0;
  eng->BrakeSystemsEngaged=0;
  eng->BrakeForce=0.0;
- eng->var[0]=0;
+
  eng->ChargingRate=0;
  eng->TrainPipeRate=0;
+ eng->UR=0.0;
+
+/*
+ eng->var[0]=0;
  eng->var[1]=0.0;
  eng->var[2]=0.0;
- eng->UR=0.0;
  eng->var[4]=0.0;
  eng->var[5]=0.0;
  eng->var[6]=0.0;
@@ -66,7 +69,7 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->var[14]=25.0;
  eng->var[15]=0.0;
  eng->var[16]=0.0;
- eng->var[17]=0.0;
+ eng->var[17]=0.0;*/
  eng->AuxilaryRate=0.0;
  eng->ALSNOn=0;
  eng->EPTvalue = 0.0;
@@ -86,7 +89,7 @@ extern "C" bool Q_DECL_EXPORT Init
  }
 
  SELF.dest = -1;
- return VL15_init(loco, &SELF);
+ return VL15_init(&SELF, loco );
 
 
 }
@@ -98,12 +101,35 @@ extern "C" void Q_DECL_EXPORT ALSN ( Locomotive *loco, SignalsInfo *sigAhead, UI
         float DistanceToNextLimit, bool Backwards )
 {
 
-    SELF.sautData.SpeedLimit.Distance = DistanceToNextLimit;
-    SELF.sautData.SpeedLimit.Limit = SpeedLimit * 3.6;
-    SELF.sautData.SpeedLimit.NextLimit = NextLimit * 3.6;
-    VL15_ALSN(loco, NumSigAhead, sigAhead, NumSigBack, sigBack, &SELF);
-   //Printer_print((ElectricEngine*)loco->Eng(), GMM_POST, L"Limit %f ALSN Signs: %d\n",
-   //               SELF.sautData.SpeedLimit.Limit, NumSigAhead);
+    SELF.alsn.SpeedLimit.Distance = DistanceToNextLimit;
+    SELF.alsn.SpeedLimit.Limit = (float)(SpeedLimit * TO_KM_PH);
+    SELF.alsn.SpeedLimit.NextLimit = (float)(NextLimit * TO_KM_PH);
+    SELF.alsn.CurrSpeed = (float)( fabs(double(loco->Velocity)) * TO_KM_PH);
+
+    SELF.isBackward = (int)Backwards;
+
+    /*загружаем информацию по сигналам */
+    SELF.alsn.NumSigForw = NumSigAhead;
+    SELF.alsn.NumSigBack = NumSigBack;
+    SELF.alsn.NumSigPassed = NumPassed;
+
+    if (sigAhead)
+    {
+        swprintf(SELF.alsn.signalName, sizeof(SELF.alsn.signalName),  L"%s", sigAhead->SignalInfo->Name);
+        SELF.alsn.SpeedLimit.NextLimit = sigAhead[0].SpeedLimit;
+        for (UINT i=0; i< NumSigAhead; i++)
+        {
+            SELF.alsn.ForwardSignalsList[i] = sigAhead[i];
+
+        }
+
+    }else
+        swprintf(SELF.alsn.signalName, sizeof(SELF.alsn.signalName),  L"UNSET");
+    if (sigBack)
+        SELF.alsn.signListBack =  *sigBack;
+
+    VL15_ALSN(&SELF, loco );
+
 
 }
 
@@ -112,9 +138,7 @@ extern "C" void Q_DECL_EXPORT Run
  (ElectricEngine *eng,const ElectricLocomotive *loco,unsigned long State,
         float time,float AirTemperature)
 {
-
-    VL15_Step(loco, eng, &SELF);
-
+    VL15_Step(&SELF, loco, eng);
 }
 
 
@@ -138,7 +162,7 @@ extern "C" void  Q_DECL_EXPORT  LostMaster
  UINT &AsyncFlags=*(UINT *)&eng->var[4];
  AsyncFlags&=~14016;
  AsyncFlags&=~(2<<16);
- eng->var[11]=0.0;
+ //eng->var[11]=0.0;
  if(eng->ThrottlePosition>36)
   eng->ThrottlePosition-=9;
  //Flags&=~1272;
@@ -181,7 +205,6 @@ extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco,const El
 extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEngine *eng,
         unsigned int SwitchID,unsigned int PrevState)
 {
-    Printer_print(eng, GMM_POST, L"Switched %d\n", SwitchID);
     switch(SwitchID)
     {
     case Tumblers::Tmb_Panto:
@@ -204,9 +227,8 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
                 isSound = 1;
             }
             if (isSound)
-            {
                 loco->PostTriggerCab(SoundsID::TP_DOWN);
-            }
+
         }
         else
         {
@@ -348,6 +370,8 @@ extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEn
 extern "C" void Q_DECL_EXPORT SpeedLimit(const Locomotive *loco,
         SpeedLimitDescr Route,SpeedLimitDescr Signal,SpeedLimitDescr Event)
 {
+
+    //Printer_print(loco->Eng(), GMM_POST, L"Speed Limit!\n");
     //SELF.sautData.SpeedLimit =  Event;
 
 }

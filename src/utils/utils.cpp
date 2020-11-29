@@ -9,7 +9,7 @@
 #include "utils.h"
 
 
-void  Printer_print( ElectricEngine *eng, int dbgLevel, const wchar_t *format, ...) noexcept
+void  Printer_print(Engine *eng, int dbgLevel, const wchar_t *format, ...) noexcept
 {
     va_list args;
     va_start(args, format);
@@ -20,3 +20,10 @@ void  Printer_print( ElectricEngine *eng, int dbgLevel, const wchar_t *format, .
     eng->ShowMessage(dbgLevel, text);
 }
 
+
+int bitIsSet(int array, int bitNum)
+{
+    if (array & (1<< bitNum))
+        return 1;
+    return 0;
+}

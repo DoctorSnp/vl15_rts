@@ -17,9 +17,9 @@ class EPK
 public:
     EPK();
     int init();
-    void setEnabled(const ElectricLocomotive *loco, int isEnabled);
-    void okey(const ElectricLocomotive *loco);
-    int step(const ElectricLocomotive *loco, int state);
+    void setEnabled(const Locomotive *loco, int isEnabled);
+    void okey(const Locomotive *loco);
+    int step(const Locomotive *loco, int state);
 private:
     en_EPKState m_state = EPK_Normal;
     struct timeb prevTime;

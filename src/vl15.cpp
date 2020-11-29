@@ -16,8 +16,6 @@
 #include "math.h"
 #include "vl15.h"
 
-#define TO_KM_PH (3.6)
-
 
 /*** Закрытые функции ***/
 static void SL2m_step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self);
@@ -27,123 +25,100 @@ static int m_getDest(st_Self *self);
 static float m_tractionВorce ( st_Self *self);
 static void _osveshenie(const ElectricLocomotive * loco, st_Self *self);
 static void _checkBrake(const ElectricLocomotive * loco, ElectricEngine *eng, st_Self *self);
-static void _setBrakePosition(int newPos, const ElectricLocomotive * loco, ElectricEngine *eng, st_Self *self);
-static en_SignColors _getForwardSignColor(SignalsInfo *signal);
-static void _debugPrint(ElectricEngine *eng, st_Self *self);
+static void _setBrakePosition(int newPos, const Locomotive * loco, Engine *eng, st_Self *self);
+static void _debugStep(const Locomotive *loco, Engine *eng, st_Self *self);
 /************************/
 
 static SAUT saut;
 static EPK epk;
 
-bool VL15_init(const ElectricLocomotive *loco, st_Self *self)
+bool VL15_init( st_Self *SELF, const ElectricLocomotive *loco)
 {
-    memset(self, 0, sizeof (struct st_Self));
-    self->pneumo.Arm_254 = 6 - _checkSwitchWithSound(loco, Arms::Arm_254, -1, 1 );
-    self->pneumo.Arm_394 = 7 - _checkSwitchWithSound(loco, Arms::Arm_394, -1, 1 );
+    memset(SELF, 0, sizeof (struct st_Self));
+    SELF->pneumo.Arm_254 = 6 - _checkSwitchWithSound(loco, Arms::Arm_254, -1, 1 );
+    SELF->pneumo.Arm_394 = 7 - _checkSwitchWithSound(loco, Arms::Arm_394, -1, 1 );
 
-    self->brake394_pos = self->pneumo.Arm_394;
-    ftime(&self->debugTime.prevTime);
-    self->debugTime.currTime = self->debugTime.prevTime;
+    SELF->brake394_pos = SELF->pneumo.Arm_394;
+    ftime(&SELF->debugTime.prevTime);
+    SELF->debugTime.currTime = SELF->debugTime.prevTime;
 
-    self->SL2M_Ticked = false;
-    self->Reverse = NEUTRAL;
+    SELF->SL2M_Ticked = false;
+    SELF->Reverse = NEUTRAL;
 
-    VL15_set_destination(self, SECTION_DEST_BACKWARD);
+    VL15_set_destination(SELF, SECTION_DEST_BACKWARD);
     saut.init();
-    Radiostation_Init(&self->radio);
-    Radiostation_setEnabled(&self->radio, 1);
+    Radiostation_Init(&SELF->radio);
+    Radiostation_setEnabled(&SELF->radio, 1);
 
-    self->sautData.SpeedLimit.Limit = 0.0;
-    self->sautData.SpeedLimit.Distance = 0.0;
+    SELF->alsn.SpeedLimit.Limit = 0.0;
+    SELF->alsn.SpeedLimit.Distance = 0.0;
     return true;
 }
 
-void VL15_set_destination(st_Self *self, int SectionDest)
+void VL15_set_destination(st_Self *SELF, int SectionDest)
 {
-    self->secdionCabDest = SectionDest;
+    SELF->secdionCabDest = SectionDest;
 }
 
-void VL15_ALSN(const Locomotive *loco, UINT NumSigAhead,
-                SignalsInfo *sigAhead,UINT NumSigBack, SignalsInfo *sigBack, st_Self *self)
+void VL15_ALSN(st_Self *SELF, const Locomotive *loco)
 {
-    self->sautData.PrevSpeed = self->prevVelocity;
-    self->sautData.CurrSpeed = self->Velocity;
-    self->Velocity = fabs(double(loco->Velocity)) * TO_KM_PH; // переводим из м/с в км/ч
-
-    if ( (sigBack != NULL) && (NumSigBack> 0) )
-        self->sautData.prevSignalColor = _getForwardSignColor(sigBack);
-
-    if ( (sigAhead != NULL) && (NumSigAhead> 0) )
-        self->sautData.forwardSignalColor = _getForwardSignColor(sigAhead);
-
-    for (UINT i=0; i< NumSigAhead && i < SIGNALS_CNT; i++)
-        self->SignalColor[i] = sigAhead->Aspect[i];
-
-    wchar_t* name = sigAhead->SignalInfo->Name;
-    swprintf(self->sautData.signalName, sizeof(self->sautData.signalName),  L"%s", name);
-}
-
-int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self)
-{
-    /*Грузим данные из движка себе в МОЗГИ*/
-    self->elecrto.LineVoltage =  loco->LineVoltage;
-    Cabin *cab = loco->cab;
-
-    cab->SetDisplayState(6, 1);
-    cab->SetDisplayValue(6, 5.2);
-    cab->SetDisplayValue(7, 1.7);
-
-    /*Работаем в своём соку*/
-    _checkBrake(loco, eng, self);
-    _osveshenie(loco, self);
-    Radiostation_Step(loco, eng, &self->radio);
-    SL2m_step(loco, eng, self);
-    HodovayaSound(loco, eng, self);
-
-    static int prevEpk = self->EPK;
-    if ( prevEpk != self->EPK)
+    SELF->alsn.PrevSpeed = SELF->prevVelocity;
+    static int prevEpk = SELF->EPK;
+    if ( prevEpk != SELF->EPK)
     {
         if (prevEpk == 0)
-            saut.start(loco, eng, self->sautData);
+            saut.start(loco, loco->Eng(), &SELF->alsn);
         else
-            saut.stop(loco, eng);
-        prevEpk = self->EPK;
+            saut.stop(loco, loco->Eng());
+        prevEpk = SELF->EPK;
     }
     else
     {
-        if (self->RB)
+        if (SELF->RB)
             epk.okey(loco);
-
-        int currEpkState = epk.step(loco,  saut.step(loco, eng, self->sautData));
-        //static int emergencyStop = currEpkState;
+        int sautState = saut.step(loco, loco->Eng(), &SELF->alsn);
+        int currEpkState = epk.step(loco, sautState );
         if ( currEpkState )
         {
-               if (!self->flags.EPK_Triggered)
-                _setBrakePosition(7, loco, eng, self);
-               //eng->IndependentBrakeValue = 6.0;
-               self->flags.EPK_Triggered = 1;
+               if (!SELF->flags.EPK_Triggered)
+                _setBrakePosition(7, loco, loco->Eng(), SELF);
+               SELF->flags.EPK_Triggered = 1;
         }
     }
+}
+
+int VL15_Step(st_Self *SELF, const ElectricLocomotive *loco, ElectricEngine *eng )
+{
+    /*Грузим данные из движка себе в МОЗГИ*/
+    SELF->elecrto.LineVoltage =  loco->LineVoltage;
+    Cabin *cab = loco->cab;
+
+    /*Работаем в своём соку*/
+    _checkBrake(loco, eng, SELF);
+    _osveshenie(loco, SELF);
+    Radiostation_Step(loco, eng, &SELF->radio);
+    SL2m_step(loco, eng, SELF);
+    HodovayaSound(loco, eng, SELF);
 
 
     /*А тепер пихаем из наших МОЗГОВ данные в движок*/
-    eng->Panto = ((unsigned char)self->elecrto.PantoRaised);
-    eng->ThrottlePosition = self->ThrottlePosition;
-    eng->Reverse = self->Reverse;
-    eng->IndependentBrakeValue= ( self->pneumo.Arm_254 - 1) * 1.0;
-    self->prevVelocity = self->Velocity;
+    eng->Panto = ((unsigned char)SELF->elecrto.PantoRaised);
+    eng->ThrottlePosition = SELF->ThrottlePosition;
+    eng->Reverse = SELF->Reverse;
+    eng->IndependentBrakeValue= ( SELF->pneumo.Arm_254 - 1) * 1.0;
+    SELF->prevVelocity = SELF->alsn.CurrSpeed;
 
 
     //float Voltage = self->elecrto.LineVoltage;
-    float SetForce = m_tractionВorce (self);
+    float SetForce = m_tractionВorce (SELF);
 
-    if(self->Velocity <= 3.01)
+    if(SELF->alsn.CurrSpeed <= 3.01)
         SetForce *= 4000.0;
     else
         SetForce *= 6800.0;
 
     eng->Force = SetForce;
-     _debugPrint( eng, self);
+     _debugStep(loco, eng, SELF);
     // так как у нас всегда всё нормалёк - возвращаем 1
     return 1;
 }
@@ -156,7 +131,7 @@ int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self
  */
 static void SL2m_step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self)
 {
-    if (self->Velocity >= 5.0)
+    if (self->alsn.CurrSpeed >= 5.0)
     {
         if (self->SL2M_Ticked == false )
         {
@@ -183,12 +158,12 @@ static void SL2m_step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Se
 static void HodovayaSound(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self)
 {
     static int isFinalStop = 0;
-    float currSpeed = fabs(self->Velocity);
+    float currSpeed = fabs(self->alsn.CurrSpeed);
     float prevSpeed = fabs(self->prevVelocity);
 
     if ( (prevSpeed > currSpeed) && (currSpeed > 0.3)  ) // типа, быстро так тормозим
     {
-        if ((self->Velocity < 3.0) && (isFinalStop == 0)  )
+        if ((self->alsn.CurrSpeed < 3.0) && (isFinalStop == 0)  )
         {
             isFinalStop = 1;
             loco->PostTriggerCab(SoundsID::FinalStop );
@@ -196,7 +171,7 @@ static void HodovayaSound(const ElectricLocomotive *loco, ElectricEngine *eng, s
         }
     }
 
-    if (fabs(self->Velocity) <= 0.00)
+    if (fabs(self->alsn.CurrSpeed) <= 0.00)
     {
         if (isFinalStop )
             isFinalStop = 0;
@@ -250,7 +225,7 @@ static void _checkBrake(const ElectricLocomotive * loco, ElectricEngine *eng, st
         _setBrakePosition(self->pneumo.Arm_394, loco, eng, self);
 }
 
-static void _setBrakePosition(int newPos, const ElectricLocomotive * loco, ElectricEngine *eng, st_Self *self)
+static void _setBrakePosition(int newPos, const Locomotive *loco, Engine *eng, st_Self *self)
 {
     if (self->brake394_pos == 7)
         loco->PostTriggerCab(SoundsID::Kran394_Extrennoe +1);
@@ -279,8 +254,8 @@ static void _setBrakePosition(int newPos, const ElectricLocomotive * loco, Elect
     else
         loco->PostTriggerCab(SoundsID::Kran394_Otpusk + 1);
     self->brake394_pos = newPos;
-    eng->BrakeForce = (self->brake394_pos - 1) * 2.0;
-    eng->ChargingRate = (self->brake394_pos -1) * 2.0;
+    eng->BrakeForce = (float) ( (self->brake394_pos - 1) * 2.0 );
+    eng->ChargingRate = (float) ( (self->brake394_pos -1) * 2.0 );
 }
 
 
@@ -302,46 +277,20 @@ static void _osveshenie(const ElectricLocomotive * loco, st_Self *self)
 }
 
 /**
- * @brief _getForwardSignColor Получить цвет сигнала впереди
- * @param eng
- * @return
- */
-static en_SignColors _getForwardSignColor(SignalsInfo *signal)
-{
-    unsigned int Aspect = signal->Aspect[0];
-    if ( (Aspect == SIGASP_CLEAR_1 ) || (Aspect == SIGASP_CLEAR_2) )
-       { return en_SignColors::COLOR_GREEN; }
-    else if ( (Aspect == SIGASP_APPROACH_1) || (Aspect == SIGASP_APPROACH_2) || (Aspect == SIGASP_APPROACH_3) )
-       { return en_SignColors::COLOR_YELLOW; }
-    else if (Aspect == SIGASP_STOP_AND_PROCEED)
-       { return en_SignColors::COLOR_RD_YEL; }
-    else if (Aspect == SIGASP_RESTRICTING)
-       { return en_SignColors::COLOR_WHITE; }
-    else
-    {
-        // по идее 0 и 8
-        return en_SignColors::COLOR_RED;
-    }
-}
-
-/**
  * @brief _debugPrint
  * @param loco
  * @param eng
  * @param self
  */
-static void _debugPrint(ElectricEngine *eng, st_Self *self)
+static void _debugStep(const Locomotive *loco, Engine *eng, st_Self *self)
 {
     ftime(&self->debugTime.currTime);
     if ((self->debugTime.prevTime.time + 1) > self->debugTime.currTime.time)
         return;
 
-    Printer_print(eng, GMM_POST, L"kran254 %f Kran394: %f, Signal: %d EPK %d \
-                  Speed: %f Limit: %f NextLimit: %f Force: %f SigName: %s\n",
-                eng->IndependentBrakeValue, eng->BrakeForce, self->sautData.forwardSignalColor,
-                self->flags.EPK_Triggered,
-                self->Velocity, self->sautData.SpeedLimit.Limit,
-                self->sautData.SpeedLimit.NextLimit, eng->Force, self->sautData.signalName);
+    Printer_print(eng, GMM_POST, L"254: %f 394: %f SAUT: %s EPK %d \
+                   Force: %f SigName: %s\n",
+                eng->IndependentBrakeValue, eng->BrakeForce, saut.stateString(),
+                self->flags.EPK_Triggered, eng->Force, self->alsn.signalName);
     self->debugTime.prevTime = self->debugTime.currTime;
 }
-

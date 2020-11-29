@@ -10,8 +10,6 @@
 #define NEUTRAL 2
 #define SECTION_DEST_FORWARD 1
 #define SECTION_DEST_BACKWARD -1
-#define SIGNALS_CNT 4
-
 
 PACKED_BEGIN
 
@@ -61,14 +59,13 @@ typedef struct st_timeForDebug
 struct st_Self
 {
   st_Flags flags;
+  int isBackward;
   int brake394_pos;
   int secdionCabDest;
   int dest; // 1 ,0,  -1
-  unsigned int SignalColor[4];
   st_Tumblers tumblers;
   Electric elecrto;
   Pneumo pneumo;
-  float Velocity; // тек. скорость
   float prevVelocity;
   bool SL2M_Ticked;
   int BV_STATE;
@@ -80,16 +77,15 @@ struct st_Self
   int Reverse;
   unsigned int ThrottlePosition;
   int shuntNum;
-  st_SAUT sautData;
+  st_ALSN alsn;
   st_timeForDebug debugTime;
 };
 
 PACKED_END
 
-bool VL15_init(const ElectricLocomotive *loco, struct st_Self *self);
-void VL15_set_destination(st_Self *self, int dest);
-void VL15_ALSN(const Locomotive *loco, UINT NumSigAhead, SignalsInfo *sigAhead, UINT NumSigBack,
-               SignalsInfo *sigBack, struct st_Self *self);
-int VL15_Step(const ElectricLocomotive *loco, ElectricEngine *eng, struct st_Self *self);
+bool VL15_init(struct st_Self *SELF, const ElectricLocomotive *loco);
+void VL15_set_destination(st_Self *SELF, int dest);
+void VL15_ALSN(struct st_Self *SELF, const Locomotive *loco);
+int VL15_Step(struct st_Self *SELF, const ElectricLocomotive *loco, ElectricEngine *eng);
 
 #endif // VL15_LOGIC_H
