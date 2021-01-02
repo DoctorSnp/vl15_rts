@@ -53,6 +53,14 @@ typedef struct st_timeForDebug
     struct timeb currTime;
 }st_timeForDebug;
 
+struct st_ServiceInfo
+{
+    float currTime;
+    float prevTIme;
+    int LocoState;
+    float AirTemperature;
+};
+
 /**
  * @brief The st_Self struct Структура с собственными параметрами для работы между функциями библиотеки.
  */
@@ -79,11 +87,20 @@ struct st_Self
   int shuntNum;
   st_ALSN alsn;
   st_timeForDebug debugTime;
+  st_ServiceInfo service;
+
+
+ // float IndependentBrakeValue;
+ // float BrakeForce;
+ // float Force ;
+ // float EngineForce;
+ // float EngineCurrent;
+//  float Power;
 };
 
 PACKED_END
 
-bool VL15_init(struct st_Self *SELF, const ElectricLocomotive *loco);
+bool VL15_init(struct st_Self *SELF, const Locomotive *loco);
 void VL15_set_destination(st_Self *SELF, int dest);
 void VL15_ALSN(struct st_Self *SELF, const Locomotive *loco);
 int VL15_Step(struct st_Self *SELF, const ElectricLocomotive *loco, ElectricEngine *eng);

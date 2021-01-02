@@ -13,6 +13,7 @@
 
 #include "vl15.h"
 
+#define MAX_LOCOS 12 // макс. кол-во локов - с учётом перспективы на МВПС
 
 #pragma hdrstop
 #pragma argsused
@@ -21,6 +22,15 @@
 #define TO_KM_PH (3.6)
 
 static struct st_Self SELF;
+static int isInitialised = 0;
+
+//ElectricLocomotive *BackSections_ptr[MAX_LOCOS] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+//UINT *BackSecFlags_ptr[MAX_LOCOS] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+struct st_Selfservice
+{
+    int state;
+};
 
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
@@ -40,6 +50,7 @@ extern "C" bool Q_DECL_EXPORT Init
  (ElectricEngine *eng,ElectricLocomotive *loco,unsigned long State,
         float time,float AirTemperature)
 {
+ isInitialised = 0;
  loco->HandbrakeValue=0.0;
  eng->HandbrakePercent=0.0;
  eng->DynamicBrakePercent=0;
@@ -75,28 +86,60 @@ extern "C" bool Q_DECL_EXPORT Init
  eng->EPTvalue = 0.0;
  eng->Reverse = NEUTRAL;
  eng->ThrottlePosition = 1;
+ SELF.service.LocoState = 0;
+ Cabin *cab=eng->cab;
+ UINT *Flags=(UINT *)&eng->var[0];
  switch(State&0xFF)
  {
-  case 1:
-   eng->UR=5.5;
-   loco->IndependentBrakePressure=0.0;
-   loco->TrainPipePressure=0.0;
-   loco->AuxiliaryPressure=0.0;
-   loco->BrakeCylinderPressure=0.0;
-   loco->MainResPressure=0.0;
-   eng->IndependentBrakeValue=0.0;
-  break;
+ case 0:
+     SELF.service.LocoState = 0;
+
+     if((State>>8)&1){
+      loco->LocoFlags|=1;
+     };
+     cab->SetSwitch(3,2,true);
+     cab->SetSwitch(0,0,0,true);
+     cab->SetSwitch(0,1,0,true);
+     cab->SetSwitch(0,2,0,true);
+     loco->MainResPressure=7.0;
+     loco->TrainPipePressure=5.0;
+     loco->AuxiliaryPressure=5.2;
+     eng->UR=4.0;
+     eng->Power=0;
+     eng->Force=0;
+     loco->BrakeCylinderPressure=0.0;
+     eng->IndependentBrakeValue=4.0;
+     eng->TrainPipeRate=0.0;
+     eng->ThrottlePosition=0;
+     eng->Reverse=0;
+     eng->ALSNOn=0;
+     eng->MainSwitch=0;
+     eng->Panto=0;
+     *Flags|=32<<8;
+
+     break;
+ case 1:
+     SELF.service.LocoState = 1;
+     eng->UR=5.5;
+     loco->IndependentBrakePressure=0.0;
+     loco->TrainPipePressure=0.0;
+     loco->AuxiliaryPressure=0.0;
+     loco->BrakeCylinderPressure=0.0;
+     loco->MainResPressure=0.0;
+     eng->IndependentBrakeValue=0.0;
+     break;
  }
 
  SELF.dest = -1;
- return VL15_init(&SELF, loco );
+ if ( VL15_init(&SELF, loco ))
+     isInitialised = 1;
 
-
+ return isInitialised;
 }
 
 
 extern "C" void Q_DECL_EXPORT ALSN ( Locomotive *loco, SignalsInfo *sigAhead, UINT NumSigAhead,
-    SignalsInfo *sigBack,UINT NumSigBack, SignalsInfo *sigPassed,UINT NumPassed,
+    SignalsInfo *sigBack,UINT NumSigBack, SignalsInfo *sigPassed, UINT NumPassed,
         float SpeedLimit, float NextLimit,
         float DistanceToNextLimit, bool Backwards )
 {
@@ -120,44 +163,43 @@ extern "C" void Q_DECL_EXPORT ALSN ( Locomotive *loco, SignalsInfo *sigAhead, UI
         for (UINT i=0; i< NumSigAhead; i++)
         {
             SELF.alsn.ForwardSignalsList[i] = sigAhead[i];
-
         }
-
-    }else
+    }
+    else
         swprintf(SELF.alsn.signalName, sizeof(SELF.alsn.signalName),  L"UNSET");
     if (sigBack)
         SELF.alsn.signListBack =  *sigBack;
 
     VL15_ALSN(&SELF, loco );
-
-
 }
 
 
 extern "C" void Q_DECL_EXPORT Run
- (ElectricEngine *eng,const ElectricLocomotive *loco,unsigned long State,
+ (ElectricEngine *eng,const ElectricLocomotive *loco, unsigned long State,
         float time,float AirTemperature)
 {
-    VL15_Step(&SELF, loco, eng);
+     VL15_Step(&SELF, loco, eng);
 }
 
 
 extern "C" void Q_DECL_EXPORT  ChangeLoco
-(Locomotive *loco,const Locomotive *Prev,unsigned long State)
+(Locomotive *loco,const Locomotive *Prev, unsigned long State)
 {
- /*if(Prev){
+ if(Prev)
+ {
   if(!Prev->Eng()->Reverse)
    if(!Prev->Cab()->Switch(132) ||
         (Prev->Cab()->Switch(55)+Prev->Cab()->Switch(58)==2))
    loco->LocoFlags|=1;
  }else
-  loco->LocoFlags|=1;*/
+  loco->LocoFlags|=1;
+  //  VL15_init(&SELF, loco );
 }
 
 extern "C" void  Q_DECL_EXPORT  LostMaster
-(Locomotive *loco,const Locomotive *Prev,unsigned long State)
+(Locomotive *loco,const Locomotive *Prev, unsigned long State)
 {
- //UINT &Flags=*(UINT *)&loco->locoA->var[0];
+ UINT &Flags=*(UINT *)&loco->locoA->var[0];
  Engine *eng=loco->Eng();
  UINT &AsyncFlags=*(UINT *)&eng->var[4];
  AsyncFlags&=~14016;
@@ -168,18 +210,21 @@ extern "C" void  Q_DECL_EXPORT  LostMaster
  //Flags&=~1272;
 }
 
-extern "C" bool Q_DECL_EXPORT CanWorkWith(const Locomotive *loco,const wchar_t *Type)
+extern "C" bool Q_DECL_EXPORT CanWorkWith(const Locomotive *loco, const wchar_t *Type)
 {
- if(!lstrcmpiW(Type,L"vl15"))
+ //if(!lstrcmpiW(Type,L"vl15"))
   return true;
- return false;
+ //return false;
 }
 
 
-extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco,const ElectricEngine *eng,
-        unsigned int SwitchID,unsigned int SetState)
+extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco, const ElectricEngine *eng,
+        unsigned int SwitchID, unsigned int SetState)
 {
- Cabin *cab=loco->Cab();
+
+ //if (isInitialised == 0)
+ //    return false;
+ //Cabin *cab=loco->Cab();
 
  if(SwitchID==Arm_Reverse)
  {
@@ -205,6 +250,14 @@ extern "C" bool Q_DECL_EXPORT  CanSwitch(const ElectricLocomotive *loco,const El
 extern "C" void Q_DECL_EXPORT Switched(const ElectricLocomotive *loco,ElectricEngine *eng,
         unsigned int SwitchID,unsigned int PrevState)
 {
+
+    ElectricLocomotive *BackSec=NULL;
+    if(loco->NumSlaves)
+     BackSec=(ElectricLocomotive *)loco->Slaves[0];
+
+    if(BackSec)
+        BackSec->loco->IndependentBrakeValue=eng->IndependentBrakeValue;
+
     switch(SwitchID)
     {
     case Tumblers::Tmb_Panto:

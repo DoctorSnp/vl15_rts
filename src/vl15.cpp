@@ -22,7 +22,7 @@ static void SL2m_step(const ElectricLocomotive *loco, ElectricEngine *eng, st_Se
 static void HodovayaSound(const ElectricLocomotive *loco, ElectricEngine *eng, st_Self *self);
 static int m_getDest(st_Self *self);
 
-static float m_tractionВorce ( st_Self *self);
+static float m_tractionForce ( st_Self *self);
 static void _osveshenie(const ElectricLocomotive * loco, st_Self *self);
 static void _checkBrake(const ElectricLocomotive * loco, ElectricEngine *eng, st_Self *self);
 static void _setBrakePosition(int newPos, const Locomotive * loco, Engine *eng, st_Self *self);
@@ -32,7 +32,7 @@ static void _debugStep(const Locomotive *loco, Engine *eng, st_Self *self);
 static SAUT saut;
 static EPK epk;
 
-bool VL15_init( st_Self *SELF, const ElectricLocomotive *loco)
+bool VL15_init( st_Self *SELF, const Locomotive *loco)
 {
     memset(SELF, 0, sizeof (struct st_Self));
     SELF->pneumo.Arm_254 = 6 - _checkSwitchWithSound(loco, Arms::Arm_254, -1, 1 );
@@ -80,37 +80,49 @@ void VL15_ALSN(st_Self *SELF, const Locomotive *loco)
         int currEpkState = epk.step(loco, sautState );
         if ( currEpkState )
         {
-               if (!SELF->flags.EPK_Triggered)
+            if (!SELF->flags.EPK_Triggered)
                 _setBrakePosition(7, loco, loco->Eng(), SELF);
-               SELF->flags.EPK_Triggered = 1;
+            SELF->flags.EPK_Triggered = 1;
         }
     }
 }
 
 int VL15_Step(st_Self *SELF, const ElectricLocomotive *loco, ElectricEngine *eng )
 {
-    /*Грузим данные из движка себе в МОЗГИ*/
-    SELF->elecrto.LineVoltage =  loco->LineVoltage;
-    Cabin *cab = loco->cab;
+     int isMainSect = 0;
+     ElectricLocomotive *BackSec=NULL;
+     if(loco->NumSlaves&&(loco->LocoFlags&1))
+     {
+       BackSec=(ElectricLocomotive *)loco->Slaves[0];
+       isMainSect = 1;
+     }
 
-    /*Работаем в своём соку*/
-    _checkBrake(loco, eng, SELF);
-    _osveshenie(loco, SELF);
-    Radiostation_Step(loco, eng, &SELF->radio);
-    SL2m_step(loco, eng, SELF);
-    HodovayaSound(loco, eng, SELF);
+     if (isMainSect)
+     {
+         /*Грузим данные из движка себе в МОЗГИ*/
+         SELF->elecrto.LineVoltage =  loco->LineVoltage;
+         Cabin *cab = loco->cab;
 
+         /*Работаем в своём соку*/
+         _checkBrake(loco, eng, SELF);
+         _osveshenie(loco, SELF);
+         Radiostation_Step(loco, eng, &SELF->radio);
+         SL2m_step(loco, eng, SELF);
+         HodovayaSound(loco, eng, SELF);
 
-    /*А тепер пихаем из наших МОЗГОВ данные в движок*/
-    eng->Panto = ((unsigned char)SELF->elecrto.PantoRaised);
-    eng->ThrottlePosition = SELF->ThrottlePosition;
-    eng->Reverse = SELF->Reverse;
-    eng->IndependentBrakeValue= ( SELF->pneumo.Arm_254 - 1) * 1.0;
-    SELF->prevVelocity = SELF->alsn.CurrSpeed;
-
-
+         /*А тепер пихаем из наших МОЗГОВ данные в движок*/
+         eng->Panto = ((unsigned char)SELF->elecrto.PantoRaised);
+         eng->ThrottlePosition = SELF->ThrottlePosition;
+         eng->Reverse = SELF->Reverse;
+         eng->IndependentBrakeValue= ( SELF->pneumo.Arm_254 - 1) * 1.0;
+         SELF->prevVelocity = SELF->alsn.CurrSpeed;
+     }
+    float SetForce = 0.0;
     //float Voltage = self->elecrto.LineVoltage;
-    float SetForce = m_tractionВorce (SELF);
+    if (isMainSect)
+        SetForce = m_tractionForce (SELF);
+    else
+        SetForce = -m_tractionForce (SELF);
 
     if(SELF->alsn.CurrSpeed <= 3.01)
         SetForce *= 4000.0;
@@ -119,6 +131,15 @@ int VL15_Step(st_Self *SELF, const ElectricLocomotive *loco, ElectricEngine *eng
 
     eng->Force = SetForce;
      _debugStep(loco, eng, SELF);
+
+
+    // SELF->IndependentBrakeValue = eng->IndependentBrakeValue;
+   //  SELF->BrakeForce = eng->BrakeForce;
+     //SELF->Force = eng->Force;
+   //  SELF->EngineForce = *eng->EngineForce;
+   //  SELF->EngineCurrent  = *eng->EngineCurrent;
+   //  SELF->Power = eng->Power;
+
     // так как у нас всегда всё нормалёк - возвращаем 1
     return 1;
 }
@@ -188,7 +209,7 @@ static int m_getDest( st_Self *self)
         return 0;
 }
 
-static float m_tractionВorce ( st_Self *self)
+static float m_tractionForce ( st_Self *self)
 {
     float startForce = 0.0;
     if (self->BV_STATE == 0)
@@ -284,13 +305,13 @@ static void _osveshenie(const ElectricLocomotive * loco, st_Self *self)
  */
 static void _debugStep(const Locomotive *loco, Engine *eng, st_Self *self)
 {
-    ftime(&self->debugTime.currTime);
+/*    ftime(&self->debugTime.currTime);
     if ((self->debugTime.prevTime.time + 1) > self->debugTime.currTime.time)
         return;
 
-    Printer_print(eng, GMM_POST, L"254: %f 394: %f SAUT: %s EPK %d \
-                   Force: %f SigName: %s\n",
-                eng->IndependentBrakeValue, eng->BrakeForce, saut.stateString(),
-                self->flags.EPK_Triggered, eng->Force, self->alsn.signalName);
-    self->debugTime.prevTime = self->debugTime.currTime;
+    Printer_print(eng, GMM_POST, L"SlavesNum: %u 254: %f 394: %f SAUT:%s  Force: %f\n",
+                loco->NumSlaves, eng->IndependentBrakeValue,
+                eng->BrakeForce, saut.stateString(),
+                eng->Force);
+    self->debugTime.prevTime = self->debugTime.currTime;*/
 }
